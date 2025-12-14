@@ -52,7 +52,7 @@ final class SearchParamsParser private (
       query: String,
       limit: Option[Int],
   ): ValidationResult[SearchParams] = (
-    NonEmptyString(query).toValidNec(InvalidQuery),
+    NonEmptyString.from(query).toValidNec(InvalidQuery),
     validateLimit(limit),
   ).mapN(SearchParams.apply)
 
