@@ -59,16 +59,17 @@ lazy val commons = (project in file("commons")).settings(
   name := "commons",
   idePackagePrefix := Some("org.aulune.commons"),
   libraryDependencies ++= testDeps ++ tapirDeps ++ circeDeps ++ doobieDeps ++ Seq(
-    "com.dimafeng" %% "testcontainers-scala-postgresql" % testcontainersVersion,
+    "co.fs2" %% "fs2-core" % fs2Version,
     "com.dimafeng" %% "testcontainers-scala-minio"      % testcontainersVersion,
+    "com.dimafeng" %% "testcontainers-scala-postgresql" % testcontainersVersion,
     "com.dimafeng" %% "testcontainers-scala-scalatest"  % testcontainersVersion,
     "org.postgresql" % "postgresql" % postgresqlVersion,
+    "org.scala-lang.modules" %% "scala-parser-combinators" % parserCombinatorsVersion,
     "org.scalamock" %% "scalamock"  % scalamockVersion,
     "org.scalatest" %% "scalatest"  % scalatestVersion,
     "org.typelevel" %% "cats-core"  % catsVersion withSources () withJavadoc (),
     "org.typelevel" %% "cats-effect" % catsEffectVersion withSources () withJavadoc (),
     "org.typelevel" %% "cats-effect-testing-scalatest" % catsEffectTestingVersion,
-    "co.fs2" %% "fs2-core" % fs2Version,
     minioDep,
   ),
 )
@@ -133,6 +134,7 @@ val log4catsVersion = "2.7.1"
 val logbackVersion = "1.5.18"
 val minioVersion = "8.5.17"
 val nimbusJoseJwt = "10.4.2"
+val parserCombinatorsVersion = "2.4.0"
 val postgresqlVersion = "42.7.7"
 val pureconfigVersion = "0.17.9"
 val scalamockVersion = "7.4.1"
