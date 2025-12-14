@@ -117,8 +117,8 @@ object AudioPlayServiceImpl:
       imageConverter,
     )
 
-  private val PngExtension = NonEmptyString.unsafe("png")
-  private val PngMimeType = NonEmptyString.unsafe("image/png")
+  private val PngExtension = NonEmptyString("png")
+  private val PngMimeType = NonEmptyString("image/png")
 
 end AudioPlayServiceImpl
 
