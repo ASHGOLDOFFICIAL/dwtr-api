@@ -54,24 +54,18 @@ object Schema:
     override def parse(raw: NonEmptyString): Option[Int] = raw.toIntOption
 
     override def allows(op: RawFilter.Operation): Boolean = op match
-      case Operation.Eq(value)  => true
-      case Operation.Ne(value)  => true
-      case Operation.Gt(value)  => true
-      case Operation.Lt(value)  => true
-      case Operation.Ge(value)  => true
-      case Operation.Le(value)  => true
+      case Operation.Eq(_) | Operation.Ne(_) | Operation.Gt(_) |
+           Operation.Lt(_) | Operation.Ge(_) | Operation.Le(_) => true
+      case _ => false
 
   /** Schema for string. */
   private final class StringSchema extends Schema[String]:
     override def parse(raw: NonEmptyString): Option[String] = Some(raw)
 
     override def allows(op: RawFilter.Operation): Boolean = op match
-      case Operation.Eq(value)  => true
-      case Operation.Ne(value)  => true
-      case Operation.Gt(value)  => true
-      case Operation.Lt(value)  => true
-      case Operation.Ge(value)  => true
-      case Operation.Le(value)  => true
+      case Operation.Eq(_) | Operation.Ne(_) | Operation.Gt(_) |
+           Operation.Lt(_) | Operation.Ge(_) | Operation.Le(_) => true
+      case _ => false
 
   given forBoolean: Schema[Boolean] = BooleanSchema()
   given forInt: Schema[Int] = IntSchema()

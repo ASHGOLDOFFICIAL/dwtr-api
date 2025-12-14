@@ -87,7 +87,11 @@ object FilterExpressionParser:
     }
 
     /** Parser for operations. */
-    private def operation: Parser[RawFilter.Operation] = comparison
+    private def operation: Parser[RawFilter.Operation] = comparison | has
+
+    /** Parser for "has" operation. */
+    private def has: Parser[RawFilter.Operation] =
+      (":" ~> value) ^^ RawFilter.Operation.Has.apply
 
     /** Parser for comparison operations. */
     private def comparison: Parser[RawFilter.Operation] =
@@ -174,3 +178,5 @@ object FilterExpressionParser:
       schema.parse(v).map(Filter.Operation.GreaterThanOrEqual.apply)
     case RawFilter.Operation.Le(v) =>
       schema.parse(v).map(Filter.Operation.LessThanOrEqual.apply)
+    case RawFilter.Operation.Has(v) =>
+      schema.parse(v).map(Filter.Operation.Has.apply)

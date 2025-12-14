@@ -41,3 +41,4 @@ object Filter:
     case LessThan(value: A)
     case GreaterThanOrEqual(value: A)
     case LessThanOrEqual(value: A)
+    case Has(value: A)
