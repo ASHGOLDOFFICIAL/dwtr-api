@@ -20,4 +20,3 @@ private[parser] object RawFilter:
     case Lt(value: NonEmptyString)
     case Ge(value: NonEmptyString)
     case Le(value: NonEmptyString)
-    case In(values: List[NonEmptyString])

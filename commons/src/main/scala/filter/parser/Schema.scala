@@ -60,7 +60,6 @@ object Schema:
       case Operation.Lt(value)  => true
       case Operation.Ge(value)  => true
       case Operation.Le(value)  => true
-      case Operation.In(values) => true
 
   /** Schema for string. */
   private final class StringSchema extends Schema[String]:
@@ -73,7 +72,6 @@ object Schema:
       case Operation.Lt(value)  => true
       case Operation.Ge(value)  => true
       case Operation.Le(value)  => true
-      case Operation.In(values) => true
 
   given forBoolean: Schema[Boolean] = BooleanSchema()
   given forInt: Schema[Int] = IntSchema()

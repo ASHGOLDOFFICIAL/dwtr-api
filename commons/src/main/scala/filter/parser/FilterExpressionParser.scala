@@ -87,7 +87,7 @@ object FilterExpressionParser:
     }
 
     /** Parser for operations. */
-    private def operation: Parser[RawFilter.Operation] = comparison | inclusion
+    private def operation: Parser[RawFilter.Operation] = comparison
 
     /** Parser for comparison operations. */
     private def comparison: Parser[RawFilter.Operation] =
@@ -97,11 +97,6 @@ object FilterExpressionParser:
         ("<" ~> value) ^^ RawFilter.Operation.Lt.apply |
         (">=" ~> value) ^^ RawFilter.Operation.Ge.apply |
         (">" ~> value) ^^ RawFilter.Operation.Gt.apply
-
-    /** Parser for inclusion operations. */
-    private def inclusion: Parser[RawFilter.Operation] =
-      "IN" ~> "(" ~> repsep(value, ",") <~ ")" ^^
-        (vs => RawFilter.Operation.In(vs))
 
     /** Parser for values. */
     private def value: Parser[NonEmptyString] =
@@ -179,5 +174,3 @@ object FilterExpressionParser:
       schema.parse(v).map(Filter.Operation.GreaterThanOrEqual.apply)
     case RawFilter.Operation.Le(v) =>
       schema.parse(v).map(Filter.Operation.LessThanOrEqual.apply)
-    case RawFilter.Operation.In(values) =>
-      values.traverse(schema.parse).map(Filter.Operation.In.apply)

@@ -115,8 +115,30 @@ final class FilterExpressionParserTest extends AnyFlatSpec with Matchers:
   }
 
   it should "handle additional whitespaces" in {
-    val input = NonEmptyString("""  is_married   =   true   """)
+    val input = NonEmptyString("  is_married   =   true   ")
     val expected = Condition(UserField.IsMarried, Equal(true))
+    parser.parse(input) shouldBe expected.asRight
+  }
+
+  it should "handle missing whitespaces before and after parentheses" in {
+    val input = NonEmptyString(
+      """NOT(is_married = true AND(age <= 10))OR(name > "A")""",
+    )
+    val expected = Or(
+      Not(
+        And(
+          Condition(UserField.IsMarried, Equal(true)),
+          Condition(UserField.Age, LessThanOrEqual(10)),
+        ),
+      ),
+      Condition(UserField.Name, GreaterThan("A")),
+    )
+    parser.parse(input) shouldBe expected.asRight
+  }
+
+  it should "handle missing whitespaces before and after operator" in {
+    val input = NonEmptyString("""name<="A"""")
+    val expected = Condition(UserField.Name, LessThanOrEqual("A"))
     parser.parse(input) shouldBe expected.asRight
   }
 

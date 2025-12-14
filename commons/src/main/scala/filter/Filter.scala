@@ -41,4 +41,3 @@ object Filter:
     case LessThan(value: A)
     case GreaterThanOrEqual(value: A)
     case LessThanOrEqual(value: A)
-    case In(values: Seq[A])
