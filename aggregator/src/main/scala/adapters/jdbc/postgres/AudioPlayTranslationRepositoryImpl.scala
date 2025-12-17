@@ -6,11 +6,12 @@ import adapters.jdbc.postgres.AudioPlayTranslationRepositoryImpl.handleConstrain
 import adapters.jdbc.postgres.metas.AudioPlayTranslationMetas.given
 import adapters.jdbc.postgres.metas.SharedMetas.given
 import domain.errors.TranslationConstraint
-import domain.model.audioplay.AudioPlay
 import domain.model.audioplay.translation.{
   AudioPlayTranslation,
+  AudioPlayTranslationFilterField,
   AudioPlayTranslationType,
 }
+import domain.model.audioplay.{AudioPlay, translation}
 import domain.model.shared.{
   ExternalResource,
   Language,
@@ -23,9 +24,9 @@ import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCu
 import cats.MonadThrow
 import cats.effect.MonadCancelThrow
 import cats.syntax.all.given
-import doobie.Transactor
 import doobie.implicits.toSqlInterpolator
 import doobie.syntax.all.given
+import doobie.{Fragment, Transactor}
 import org.aulune.commons.adapters.doobie.postgres.ErrorUtils.{
   checkIfPositive,
   checkIfUpdated,
@@ -33,7 +34,11 @@ import org.aulune.commons.adapters.doobie.postgres.ErrorUtils.{
   toInternalError,
 }
 import org.aulune.commons.adapters.doobie.postgres.Metas.uuidMeta
-import org.aulune.commons.types.Uuid
+import org.aulune.commons.filter.Filter
+import org.aulune.commons.filter.instances.DoobieFragmentFilterEvaluator
+import org.aulune.commons.repositories.RepositoryError
+import org.aulune.commons.types.{NonEmptyString, Uuid}
+import org.typelevel.log4cats.{Logger, LoggerFactory}
 
 
 /** [[AudioPlayTranslationRepository]] implementation for PostgreSQL. */
@@ -42,9 +47,10 @@ object AudioPlayTranslationRepositoryImpl:
    *  @param transactor [[Transactor]] instance.
    *  @tparam F effect type.
    */
-  def build[F[_]: MonadCancelThrow](
+  def build[F[_]: MonadCancelThrow: LoggerFactory](
       transactor: Transactor[F],
   ): F[AudioPlayTranslationRepository[F]] =
+    given Logger[F] = LoggerFactory[F].getLogger
     for _ <- createTranslationsTable.transact(transactor)
     yield AudioPlayTranslationRepositoryImpl[F](transactor)
 
@@ -75,6 +81,8 @@ end AudioPlayTranslationRepositoryImpl
 
 private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     transactor: Transactor[F],
+)(using
+    logger: Logger[F],
 ) extends AudioPlayTranslationRepository[F]:
 
   override def contains(id: Uuid[AudioPlayTranslation]): F[Boolean] = sql"""
@@ -142,21 +150,37 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
       .handleErrorWith(toInternalError)
 
   override def list(
-      cursor: Option[AudioPlayTranslationCursor],
       count: Int,
-  ): F[List[AudioPlayTranslation]] =
-    val sort = fr0"LIMIT $count"
-    val full = cursor match
-      case Some(t) => selectBase ++ fr"WHERE id > ${t.id}" ++ sort
-      case None    => selectBase ++ sort
-
-    checkIfPositive(count) >> full.stripMargin
+      cursor: Option[AudioPlayTranslationCursor],
+      filter: Option[Filter[AudioPlayTranslationFilterField]],
+  ): F[List[AudioPlayTranslation]] = (for
+    _ <- checkIfPositive(count)
+    query <- MonadThrow[F]
+      .fromEither(makeListQuery(count, cursor, filter))
+      .flatTap(f => println(f.toString).pure)
+    result <- query.stripMargin
       .query[SelectResult]
       .map(toTranslation)
       .to[List]
       .transact(transactor)
-      .handleErrorWith(toInternalError)
-  end list
+  yield result)
+    .handleErrorWith(toInternalError)
+
+  private def makeListQuery(
+      count: Int,
+      cursor: Option[AudioPlayTranslationCursor],
+      filter: Option[Filter[AudioPlayTranslationFilterField]],
+  ): Either[RepositoryError, Fragment] = filter
+    .traverse(filterEvaluator.eval)
+    .map { optFilterFragment =>
+      val where = (cursor, optFilterFragment) match
+        case (Some(c), Some(f)) => fr"WHERE (id > ${c.id}) AND" ++ f
+        case (Some(c), None)    => fr0"WHERE (id > ${c.id})"
+        case (None, Some(f))    => fr"WHERE" ++ f
+        case (None, None)       => Fragment.empty
+      selectBase ++ where ++ fr0" LIMIT $count"
+    }
+    .leftMap(_ => RepositoryError.InvalidArgument)
 
   private type SelectResult = (
       Uuid[AudioPlay],
@@ -193,3 +217,10 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     selfHostedLocation = selfHostLocation,
     externalResources = resources,
   )
+
+  private val filterEvaluator
+      : DoobieFragmentFilterEvaluator[AudioPlayTranslationFilterField] =
+    DoobieFragmentFilterEvaluator[AudioPlayTranslationFilterField] {
+      case AudioPlayTranslationFilterField.OriginalId =>
+        NonEmptyString("original_id::text")
+    }

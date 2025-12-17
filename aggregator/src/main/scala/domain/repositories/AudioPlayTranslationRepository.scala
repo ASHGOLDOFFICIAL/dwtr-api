@@ -2,10 +2,14 @@ package org.aulune.aggregator
 package domain.repositories
 
 
-import AudioPlayTranslationRepository.AudioPlayTranslationCursor
 import domain.model.audioplay.AudioPlay
-import org.aulune.aggregator.domain.model.audioplay.translation.AudioPlayTranslation
+import domain.model.audioplay.translation.{
+  AudioPlayTranslation,
+  AudioPlayTranslationFilterField,
+}
+import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCursor
 
+import org.aulune.commons.filter.Filter
 import org.aulune.commons.pagination.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.repositories.{GenericRepository, PaginatedList}
 import org.aulune.commons.types.Uuid
@@ -24,8 +28,19 @@ trait AudioPlayTranslationRepository[F[_]]
     extends GenericRepository[
       F,
       AudioPlayTranslation,
-      Uuid[AudioPlayTranslation]]
-    with PaginatedList[F, AudioPlayTranslation, AudioPlayTranslationCursor]
+      Uuid[AudioPlayTranslation],
+    ]:
+
+  /** Lists translation.
+   *  @param count amount of elements.
+   *  @param cursor cursor to last element.
+   *  @param filter optional filter expression.
+   */
+  def list(
+      count: Int,
+      cursor: Option[AudioPlayTranslationCursor],
+      filter: Option[Filter[AudioPlayTranslationFilterField]],
+  ): F[List[AudioPlayTranslation]]
 
 
 object AudioPlayTranslationRepository:

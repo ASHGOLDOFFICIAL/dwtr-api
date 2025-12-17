@@ -3,12 +3,7 @@ package api.http.circe
 
 
 import api.http.circe.SharedCodecs.given
-import api.mappers.{
-  AudioPlayTranslationTypeMapper,
-  ExternalResourceTypeMapper,
-  LanguageMapper,
-}
-import application.dto.audioplay.series.AudioPlaySeriesResource
+import api.mappers.AudioPlayTranslationTypeMapper
 import application.dto.audioplay.translation.{
   AudioPlayTranslationLocationResource,
   AudioPlayTranslationResource,
@@ -17,16 +12,7 @@ import application.dto.audioplay.translation.{
   ListAudioPlayTranslationsRequest,
   ListAudioPlayTranslationsResponse,
 }
-import application.dto.audioplay.{
-  AudioPlayResource,
-  CreateAudioPlayRequest,
-  ListAudioPlaysResponse,
-}
-import application.dto.shared.{
-  ExternalResourceDTO,
-  ExternalResourceTypeDTO,
-  LanguageDTO,
-}
+import application.dto.shared.{ExternalResourceDTO, LanguageDTO}
 
 import io.circe.generic.extras.semiauto.{
   deriveConfiguredDecoder,
@@ -34,9 +20,9 @@ import io.circe.generic.extras.semiauto.{
 }
 import io.circe.{Decoder, Encoder}
 import org.aulune.commons.adapters.circe.CirceUtils.config
+import org.aulune.commons.adapters.circe.CommonTypeCodecs.given
 
-import java.net.{URI, URL}
-import scala.util.Try
+import java.net.URI
 
 
 /** [[Encoder]] and [[Decoder]] instances for audio play translation DTOs. */

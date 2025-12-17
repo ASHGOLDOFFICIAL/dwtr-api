@@ -5,8 +5,8 @@ package api.http.tapir.audioplay.translation
 import api.http.tapir.SharedSchemas.given
 import api.http.tapir.audioplay.AudioPlayExamples
 import api.http.tapir.audioplay.translation.AudioPlayTranslationExamples.{
-  ListResponse,
   CreateRequest,
+  ListResponse,
   Resource,
 }
 import api.mappers.{AudioPlayTranslationTypeMapper, LanguageMapper}
@@ -21,6 +21,7 @@ import application.dto.audioplay.translation.{
 import application.dto.shared.LanguageDTO
 
 import io.circe.syntax.given
+import org.aulune.commons.adapters.tapir.CommonTypeCodecs.nonEmptyStringSchema
 import sttp.tapir.{Schema, Validator}
 
 import java.net.URI

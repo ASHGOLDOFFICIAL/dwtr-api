@@ -23,7 +23,10 @@ import application.{
   AudioPlayTranslationService,
 }
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.translation.AudioPlayTranslation
+import domain.model.audioplay.translation.{
+  AudioPlayTranslation,
+  AudioPlayTranslationFilterField,
+}
 import domain.repositories.AudioPlayTranslationRepository
 import domain.repositories.AudioPlayTranslationRepository.{
   AudioPlayTranslationCursor,
@@ -34,6 +37,7 @@ import cats.MonadThrow
 import cats.data.EitherT
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
+import org.aulune.commons.filter.FilterParser
 import org.aulune.commons.pagination.PaginationParamsParser
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.PermissionClientService
@@ -64,17 +68,19 @@ object AudioPlayTranslationServiceImpl:
       permissionService: PermissionClientService[F],
   ): F[AudioPlayTranslationService[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
-    val parserO = PaginationParamsParser
+    val filterParser = FilterParser.make[AudioPlayTranslationFilterField]
+    val maybeParser = PaginationParamsParser
       .build[AudioPlayTranslationCursor](pagination.default, pagination.max)
 
     for
       _ <- info"Building service."
       parser <- MonadThrow[F]
-        .fromOption(parserO, new IllegalArgumentException())
+        .fromOption(maybeParser, new IllegalArgumentException())
         .onError(_ => error"Invalid parser parameters are given.")
       _ <- permissionService.registerPermission(Modify)
     yield new AudioPlayTranslationServiceImpl[F](
       parser,
+      filterParser,
       repo,
       audioPlayService,
       permissionService)
@@ -86,6 +92,7 @@ private final class AudioPlayTranslationServiceImpl[F[
     _,
 ]: MonadThrow: SortableUUIDGen: LoggerFactory](
     paginationParser: PaginationParamsParser[AudioPlayTranslationCursor],
+    filterParser: FilterParser[AudioPlayTranslationFilterField],
     repo: AudioPlayTranslationRepository[F],
     audioPlayService: AudioPlayService[F],
     permissionService: PermissionClientService[F],
@@ -115,7 +122,10 @@ private final class AudioPlayTranslationServiceImpl[F[
       params <- EitherT
         .fromOption(paramsV.toOption, ErrorResponses.invalidPaginationParams)
         .leftSemiflatTap(_ => warn"Invalid pagination params are given.")
-      listResult = repo.list(params.cursor, params.pageSize)
+      filter <- request.filter
+        .traverse(filter => EitherT.fromEither(filterParser.parse(filter)))
+        .leftMap(_ => ErrorResponses.invalidFilter)
+      listResult = repo.list(params.pageSize, params.cursor, filter)
       elems <- EitherT.liftF(listResult)
       response = AudioPlayTranslationMapper.toListResponse(elems)
     yield response).value.handleErrorWith(handleInternal)

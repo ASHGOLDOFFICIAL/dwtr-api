@@ -80,7 +80,9 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
 
   private val listEndpoint = endpoint.get
     .in(collectionPath)
-    .in(MethodSpecificQueryParams.pagination)
+    .in(
+      MethodSpecificQueryParams.pagination.and(MethodSpecificQueryParams.filter),
+    )
     .out(
       statusCode(StatusCode.Ok).and(jsonBody[ListAudioPlayTranslationsResponse]
         .description("List of audio plays and a token to retrieve next page.")
@@ -90,10 +92,12 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
     .name("ListTranslations")
     .summary("Returns the list of translation for given parent.")
     .tag(tag)
-    .serverLogic { (pageSize, pageToken) =>
+    .serverLogic { (pageSize, pageToken, filter) =>
       val request = ListAudioPlayTranslationsRequest(
         pageSize = pageSize,
-        pageToken = pageToken)
+        pageToken = pageToken,
+        filter = filter,
+      )
       for result <- service.list(request)
       yield result.leftMap(ErrorStatusCodeMapper.toApiResponse)
     }
