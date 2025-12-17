@@ -5,13 +5,19 @@ package adapters.jdbc.postgres
 import adapters.service.AudioPlayTranslations
 import domain.errors.TranslationConstraint
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.translation.AudioPlayTranslation
+import domain.model.audioplay.translation.{
+  AudioPlayTranslation,
+  AudioPlayTranslationFilterField,
+}
 import domain.model.shared.TranslatedTitle
 import domain.repositories.AudioPlayTranslationRepository
 import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCursor
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
+import org.aulune.commons.filter.Filter
+import org.aulune.commons.filter.Filter.Literal.StringLiteral
+import org.aulune.commons.filter.Filter.Operator.Equal
 import org.aulune.commons.repositories.RepositoryError.{
   ConstraintViolation,
   FailedPrecondition,
@@ -20,6 +26,8 @@ import org.aulune.commons.testing.PostgresTestContainer
 import org.aulune.commons.types.Uuid
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.typelevel.log4cats.slf4j.Slf4jFactory
+import org.typelevel.log4cats.{LoggerFactory, SelfAwareStructuredLogger}
 
 
 /** Tests for [[AudioPlayTranslationRepositoryImpl]]. */
@@ -28,6 +36,8 @@ final class AudioPlayTranslationRepositoryImplTest
     with AsyncIOSpec
     with Matchers
     with PostgresTestContainer:
+
+  private given loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   private def stand = makeStand(AudioPlayTranslationRepositoryImpl.build[IO])
 
@@ -132,24 +142,37 @@ final class AudioPlayTranslationRepositoryImplTest
   "list method " - {
     "should " - {
       "return empty list if no translation's available" in stand { repo =>
-        for audios <- repo.list(None, 10)
+        for audios <- repo.list(10, None, None)
         yield audios shouldBe Nil
       }
 
       "return no more than asked" in stand { repo =>
         for
           _ <- persistTranslations(repo)
-          audios <- repo.list(None, 2)
+          audios <- repo.list(2, None, None)
         yield audios shouldBe translationTests.take(2)
       }
 
       "continue listing if token is given" in stand { repo =>
         for
           _ <- persistTranslations(repo)
-          first <- repo.list(None, 1).map(_.head)
+          first <- repo.list(1, None, None).map(_.head)
           cursor = AudioPlayTranslationCursor(first.id)
-          rest <- repo.list(Some(cursor), 1)
+          rest <- repo.list(1, Some(cursor), None)
         yield rest.head shouldBe translationTests(1)
+      }
+
+      "filter elements" in stand { repo =>
+        val filter = Filter.Condition[AudioPlayTranslationFilterField](
+          AudioPlayTranslationFilterField.OriginalId,
+          Equal,
+          StringLiteral(translationTest.originalId.toString),
+        )
+
+        for
+          _ <- persistTranslations(repo)
+          result <- repo.list(10, None, Some(filter))
+        yield result shouldBe List(translationTest)
       }
     }
   }

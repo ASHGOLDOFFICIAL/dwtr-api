@@ -146,9 +146,10 @@ final class AudioPlayTranslationServiceImplTest
         val request = ListAudioPlayTranslationsRequest(
           pageSize = 1.some,
           pageToken = None,
+          filter = None,
         )
         val _ = (mockRepo.list _)
-          .expects(None, 1)
+          .expects(1, None, None)
           .returning(List(translation).pure)
 
         for result <- service.list(request)
@@ -162,10 +163,11 @@ final class AudioPlayTranslationServiceImplTest
         val request = ListAudioPlayTranslationsRequest(
           pageSize = 1.some,
           pageToken = "NjVlZTBlNjItNDc4MC00Nzc3LWEyOTYtM2VmMGRhOWJlN2U4".some,
+          filter = None,
         )
         val cursor = AudioPlayTranslationCursor(translation.id).some
         val _ = (mockRepo.list _)
-          .expects(cursor, 1)
+          .expects(1, cursor, None)
           .returning(List(AudioPlayTranslations.translation2).pure)
         val response = AudioPlayTranslationMapper.makeResource(
           AudioPlayTranslations.translation2)

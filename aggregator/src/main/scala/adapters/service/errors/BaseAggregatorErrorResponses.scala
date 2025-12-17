@@ -42,3 +42,9 @@ trait BaseAggregatorErrorResponses:
     message = "Given pagination params are invalid.",
     details = ErrorDetails(),
   )
+
+  val invalidFilter: ErrorResponse = ErrorResponse(
+    status = InvalidArgument,
+    message = "Given filter is not valid.",
+    details = ErrorDetails(),
+  )
