@@ -3,7 +3,7 @@ package domain.model.translation
 
 
 import domain.errors.TranslationValidationError
-import domain.model.audioplay.AudioPlay
+import domain.model.work.Work
 import Translation.ValidationResult
 import domain.model.shared.{ExternalResource, Language, SelfHostedLocation}
 
@@ -25,7 +25,7 @@ import java.net.URI
  *  @param externalResources links to different resources.
  */
 final case class Translation private (
-    originalId: Uuid[AudioPlay],
+    originalId: Uuid[Work],
     id: Uuid[Translation],
     title: TranslatedTitle,
     translationType: TranslationType,
@@ -38,7 +38,7 @@ final case class Translation private (
    *  @return new state validation result.
    */
   def update(
-      originalId: Uuid[AudioPlay] = originalId,
+      originalId: Uuid[Work] = originalId,
       id: Uuid[Translation] = id,
       title: TranslatedTitle = title,
       translationType: TranslationType = translationType,
@@ -71,7 +71,7 @@ object Translation:
    *  @return translation validation result.
    */
   def apply(
-      originalId: Uuid[AudioPlay],
+      originalId: Uuid[Work],
       id: Uuid[Translation],
       title: TranslatedTitle,
       translationType: TranslationType,
@@ -93,7 +93,7 @@ object Translation:
    *  @throws TranslationValidationError if constructs invalid object.
    */
   def unsafe(
-      originalId: Uuid[AudioPlay],
+      originalId: Uuid[Work],
       id: Uuid[Translation],
       title: TranslatedTitle,
       translationType: TranslationType,

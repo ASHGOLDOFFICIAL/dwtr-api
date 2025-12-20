@@ -2,21 +2,21 @@ package org.aulune.aggregator
 
 
 import adapters.jdbc.postgres.{
-  AudioPlayRepositoryImpl,
-  AudioPlaySeriesRepositoryImpl,
+  WorkRepositoryImpl,
+  SeriesRepositoryImpl,
   PersonRepositoryImpl,
   TranslationRepositoryImpl,
 }
 import adapters.s3.CoverImageStorageImpl
 import adapters.service.{
-  AudioPlaySeriesServiceImpl,
-  AudioPlayServiceImpl,
+  SeriesServiceImpl,
+  WorkServiceImpl,
   PersonServiceImpl,
   TranslationServiceImpl,
 }
 import api.http.{
-  AudioPlaySeriesController,
-  AudioPlaysController,
+  SeriesController,
+  WorkController,
   PersonsController,
   TranslationsController,
 }
@@ -66,15 +66,15 @@ object AggregatorApp:
         permissionServ)
       personEndpoints = new PersonsController[F](personServ, authServ).endpoints
 
-      seriesRepo <- AudioPlaySeriesRepositoryImpl.build[F](transactor)
-      seriesServ <- AudioPlaySeriesServiceImpl.build[F](
+      seriesRepo <- SeriesRepositoryImpl.build[F](transactor)
+      seriesServ <- SeriesServiceImpl.build[F](
         config.maxBatchGet,
         config.pagination,
         config.search,
         seriesRepo,
         permissionServ,
       )
-      seriesEndpoints = new AudioPlaySeriesController[F](
+      seriesEndpoints = new SeriesController[F](
         config.pagination,
         seriesServ,
         authServ).endpoints
@@ -85,26 +85,26 @@ object AggregatorApp:
         config.coverStorage.bucket,
         config.coverStorage.partSize,
       )
-      audioRepo <- AudioPlayRepositoryImpl.build[F](transactor)
-      audioServ <- AudioPlayServiceImpl
+      workRepo <- WorkRepositoryImpl.build[F](transactor)
+      workService <- WorkServiceImpl
         .build[F](
           config.pagination,
           config.search,
           config.coverLimits,
-          audioRepo,
+          workRepo,
           coverStorage,
           seriesServ,
           personServ,
           permissionServ,
           ImageConverter[F])
-      audioEndpoints = new AudioPlaysController[F](
+      workEndpoints = new WorkController[F](
         config.pagination,
-        audioServ,
+        workService,
         authServ).endpoints
 
       transRepo <- TranslationRepositoryImpl.build[F](transactor)
       transServ <- TranslationServiceImpl
-        .build[F](config.pagination, transRepo, audioServ, permissionServ)
+        .build[F](config.pagination, transRepo, workService, permissionServ)
       translationEndpoints = new TranslationsController[F](
         config.pagination,
         transServ,
@@ -112,6 +112,6 @@ object AggregatorApp:
       ).endpoints
 
       allEndpoints =
-        seriesEndpoints ++ audioEndpoints ++ translationEndpoints ++ personEndpoints
+        seriesEndpoints ++ workEndpoints ++ translationEndpoints ++ personEndpoints
     yield new AggregatorApp[F]:
       override val endpoints: List[ServerEndpoint[Any, F]] = allEndpoints

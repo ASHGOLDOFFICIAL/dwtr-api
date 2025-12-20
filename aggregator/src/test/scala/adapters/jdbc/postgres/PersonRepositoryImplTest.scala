@@ -4,7 +4,7 @@ package adapters.jdbc.postgres
 
 import adapters.service.Persons
 import domain.errors.PersonConstraint
-import domain.model.person.{FullName, Person, PersonFilterField}
+import domain.model.person.{FullName, Person, PersonField}
 import domain.repositories.PersonRepository
 
 import cats.data.NonEmptyList
@@ -178,10 +178,8 @@ final class PersonRepositoryImplTest
         for
           _ <- persistMany(repo)
           first <- repo.list(1, None).map(_.head)
-          filter = Condition(
-            PersonFilterField.Id,
-            GreaterThan,
-            Literal(first.id.toString))
+          filter =
+            Condition(PersonField.Id, GreaterThan, Literal(first.id.toString))
           second <- repo.list(1, Some(filter)).map(_.head)
         yield List(first, second) shouldBe personList.take(2)
       }

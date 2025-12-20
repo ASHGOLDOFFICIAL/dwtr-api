@@ -3,10 +3,10 @@ package adapters.service
 
 
 import adapters.service.mappers.{
-  AudioPlayTranslationMapper,
-  AudioPlayTranslationTypeMapper,
   ExternalResourceMapper,
   LanguageMapper,
+  TranslationMapper,
+  TranslationTypeMapper,
 }
 import application.AggregatorPermission.Modify
 import application.TranslationService
@@ -67,7 +67,7 @@ final class TranslationServiceImplTest
   private given LoggerFactory[IO] = Slf4jFactory.create
 
   private val mockRepo = mock[TranslationRepository[IO]]
-  private val mockAudio = AudioPlays.service[IO]
+  private val mockWorkService = Works.service[IO]
   private val mockPermissions = mock[PermissionClientService[IO]]
 
   private val uuid = UUID.fromString("00000000-0000-0000-0000-000000000001")
@@ -89,7 +89,7 @@ final class TranslationServiceImplTest
       .build(
         AggregatorConfig.PaginationParams(2, 1),
         mockRepo,
-        mockAudio,
+        mockWorkService,
         mockPermissions)
       .flatMap(testCase)
   end stand
@@ -99,7 +99,7 @@ final class TranslationServiceImplTest
     originalId = translation.originalId,
     id = translation.id,
     title = translation.title,
-    translationType = AudioPlayTranslationTypeMapper
+    translationType = TranslationTypeMapper
       .fromDomain(translation.translationType),
     language = LanguageMapper.fromDomain(translation.language),
     externalResources = translation.externalResources
@@ -177,8 +177,7 @@ final class TranslationServiceImplTest
           .expects(1, Some(filter))
           .returning(List(Translations.translation2).pure)
 
-        val response =
-          AudioPlayTranslationMapper.makeResource(Translations.translation2)
+        val response = TranslationMapper.makeResource(Translations.translation2)
 
         for
           first <- service.list(request)
@@ -193,7 +192,7 @@ final class TranslationServiceImplTest
     val request = CreateTranslationRequest(
       originalId = newTranslation.originalId,
       title = newTranslation.title,
-      translationType = AudioPlayTranslationTypeMapper
+      translationType = TranslationTypeMapper
         .fromDomain(newTranslation.translationType),
       language = LanguageMapper.fromDomain(newTranslation.language),
       selfHostedLocation = newTranslation.selfHostedLocation,
@@ -218,7 +217,7 @@ final class TranslationServiceImplTest
           assertDomainError(find)(InvalidTranslation)
       }
 
-      "result in OriginalNotFound when original audio play doesn't exist" in stand {
+      "result in OriginalNotFound when original work doesn't exist" in stand {
         service =>
           val invalidRequest = request.copy(originalId = uuid)
           val _ = mockHasPermission(Modify, true.asRight.pure)

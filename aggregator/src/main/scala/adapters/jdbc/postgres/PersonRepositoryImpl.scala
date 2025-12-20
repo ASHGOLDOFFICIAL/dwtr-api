@@ -5,8 +5,8 @@ package adapters.jdbc.postgres
 import adapters.jdbc.postgres.PersonRepositoryImpl.handleConstraintViolation
 import adapters.jdbc.postgres.metas.PersonMetas.given
 import domain.errors.PersonConstraint
-import domain.model.person.PersonFilterField as FilterField
-import domain.model.person.{FullName, Person, PersonFilterField}
+import domain.model.person.PersonField as FilterField
+import domain.model.person.{FullName, Person, PersonField}
 import domain.repositories.PersonRepository
 
 import cats.MonadThrow
@@ -124,7 +124,7 @@ private final class PersonRepositoryImpl[F[_]: MonadCancelThrow](
 
   override def list(
       count: Int,
-      filter: Option[Filter[PersonFilterField]],
+      filter: Option[Filter[PersonField]],
   ): F[List[Person]] =
     for
       _ <- checkIfPositive(count)

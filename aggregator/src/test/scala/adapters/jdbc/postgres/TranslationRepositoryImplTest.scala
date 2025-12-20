@@ -4,7 +4,7 @@ package adapters.jdbc.postgres
 
 import adapters.service.Translations
 import domain.errors.TranslationConstraint
-import domain.model.audioplay.AudioPlay
+import domain.model.work.Work
 import domain.model.translation.{TranslatedTitle, Translation, TranslationField}
 import domain.repositories.TranslationRepository
 

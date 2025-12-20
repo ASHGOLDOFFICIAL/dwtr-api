@@ -3,7 +3,7 @@ package api.http.tapir.translation
 
 
 import api.http.tapir.SharedSchemas.given
-import api.http.tapir.audioplay.AudioPlayExamples
+import api.http.tapir.work.WorkExamples
 import api.http.tapir.translation.TranslationExamples.{
   CreateRequest,
   ListResponse,
@@ -36,7 +36,7 @@ object TranslationSchemas:
         .description(idDescription)
     }
     .modify(_.originalId) {
-      _.encodedExample(AudioPlayExamples.Resource.id.asJson.toString)
+      _.encodedExample(WorkExamples.Resource.id.asJson.toString)
         .description(originalIdDescription)
     }
     .modify(_.title) {

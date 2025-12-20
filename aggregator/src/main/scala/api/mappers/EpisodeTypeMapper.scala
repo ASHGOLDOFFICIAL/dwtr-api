@@ -1,7 +1,7 @@
 package org.aulune.aggregator
 package api.mappers
 
-import application.dto.audioplay.EpisodeTypeDTO
+import application.dto.work.EpisodeTypeDTO
 
 
 /** Mapper between application layer's [[EpisodeTypeDTO]] and its API

@@ -6,7 +6,7 @@ import adapters.jdbc.postgres.TranslationRepositoryImpl.handleConstraintViolatio
 import adapters.jdbc.postgres.metas.SharedMetas.given
 import adapters.jdbc.postgres.metas.TranslationMetas.given
 import domain.errors.TranslationConstraint
-import domain.model.audioplay.AudioPlay
+import domain.model.work.Work
 import domain.model.shared.{ExternalResource, Language, SelfHostedLocation}
 import domain.model.translation.{
   TranslatedTitle,
@@ -157,7 +157,7 @@ private final class TranslationRepositoryImpl[F[_]: MonadCancelThrow](
     .handleErrorWith(toInternalError)
 
   private type SelectResult = (
-      Uuid[AudioPlay],
+      Uuid[Work],
       Uuid[Translation],
       TranslatedTitle,
       TranslationType,
@@ -175,7 +175,7 @@ private final class TranslationRepositoryImpl[F[_]: MonadCancelThrow](
 
   /** Makes translation from given data. */
   private def toTranslation(
-      originalId: Uuid[AudioPlay],
+      originalId: Uuid[Work],
       id: Uuid[Translation],
       title: TranslatedTitle,
       translationType: TranslationType,
