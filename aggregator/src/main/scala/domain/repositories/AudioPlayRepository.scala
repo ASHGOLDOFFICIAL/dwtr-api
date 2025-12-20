@@ -3,21 +3,15 @@ package domain.repositories
 
 
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.series.AudioPlaySeries
 import domain.repositories.AudioPlayRepository.AudioPlayCursor
 
-import org.aulune.commons.pagination.{CursorDecoder, CursorEncoder}
+import org.aulune.commons.pagination.cursor.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.repositories.{
   GenericRepository,
   PaginatedList,
   TextSearch,
 }
 import org.aulune.commons.types.Uuid
-
-import java.nio.charset.StandardCharsets
-import java.nio.charset.StandardCharsets.UTF_8
-import java.util.Base64
-import scala.util.Try
 
 
 /** Repository for [[AudioPlay]] objects.
@@ -34,15 +28,5 @@ object AudioPlayRepository:
    *  @param id identity of [[AudioPlay]].
    */
   final case class AudioPlayCursor(id: Uuid[AudioPlay])
-
-  given CursorDecoder[AudioPlayCursor] = token =>
-    Try {
-      val decoded = Base64.getUrlDecoder.decode(token)
-      val idString = new String(decoded, UTF_8)
-      val id = Uuid[AudioPlay](idString).get
-      AudioPlayCursor(id)
-    }.toOption
-
-  given CursorEncoder[AudioPlayCursor] = token =>
-    val raw = token.id.toString
-    Base64.getUrlEncoder.withoutPadding.encodeToString(raw.getBytes(UTF_8))
+      derives CursorEncoder,
+        CursorDecoder

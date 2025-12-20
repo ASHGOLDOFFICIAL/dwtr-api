@@ -2,6 +2,8 @@ package org.aulune.commons
 package types
 
 
+import pagination.cursor.{ByteDecoder, ByteEncoder}
+
 import java.util.UUID
 import scala.util.Try
 
@@ -32,3 +34,9 @@ object Uuid:
    *  @tparam A type of object this UUID identifies.
    */
   def unsafe[A](uuid: String): Uuid[A] = UUID.fromString(uuid)
+
+  given byteEncoder[A]: ByteEncoder[Uuid[A]] =
+    ByteEncoder.forString.map(_.toString)
+
+  given byteDecoder[A]: ByteDecoder[Uuid[A]] =
+    ByteDecoder.forString.map(s => Some(UUID.fromString(s)))

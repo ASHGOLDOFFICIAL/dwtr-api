@@ -29,7 +29,6 @@ import domain.repositories.AudioPlayTranslationRepository
 import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCursor
 
 import cats.effect.IO
-import cats.effect.std.UUIDGen
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
@@ -45,6 +44,7 @@ import org.aulune.commons.testing.ErrorAssertions.{
   assertInternalError,
 }
 import org.aulune.commons.testing.instances.UUIDGenInstances.makeFixedUuidGen
+import org.aulune.commons.testing.syntax.*
 import org.aulune.commons.typeclasses.SortableUUIDGen
 import org.aulune.commons.types.Uuid
 import org.scalamock.scalatest.AsyncMockFactory
@@ -162,20 +162,27 @@ final class AudioPlayTranslationServiceImplTest
       "return next page when asked" in stand { service =>
         val request = ListAudioPlayTranslationsRequest(
           pageSize = 1.some,
-          pageToken = "NjVlZTBlNjItNDc4MC00Nzc3LWEyOTYtM2VmMGRhOWJlN2U4".some,
+          pageToken = None,
           filter = None,
         )
-        val cursor = AudioPlayTranslationCursor(translation.id).some
+
+        val cursor =
+          AudioPlayTranslationCursor(AudioPlayTranslations.translation1.id).some
+        val _ = (mockRepo.list _)
+          .expects(1, None, None)
+          .returning(List(AudioPlayTranslations.translation1).pure)
         val _ = (mockRepo.list _)
           .expects(1, cursor, None)
           .returning(List(AudioPlayTranslations.translation2).pure)
+
         val response = AudioPlayTranslationMapper.makeResource(
           AudioPlayTranslations.translation2)
 
-        for result <- service.list(request)
-        yield result match
-          case Left(_)     => fail("Error was not expected")
-          case Right(list) => list.translations shouldBe List(response)
+        for
+          first <- service.list(request)
+          secondRequest = request.copy(pageToken = first.getRight.nextPageToken)
+          result <- service.list(secondRequest)
+        yield result.getRight.translations shouldBe List(response)
       }
     }
   }

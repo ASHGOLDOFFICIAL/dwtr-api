@@ -25,7 +25,7 @@ import cats.MonadThrow
 import cats.data.{EitherT, NonEmptyList}
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
-import org.aulune.commons.pagination.PaginationParamsParser
+import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.search.SearchParamsParser
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.PermissionClientService

@@ -14,7 +14,7 @@ import domain.repositories.AudioPlaySeriesRepository
 
 import cats.data.ValidatedNec
 import cats.syntax.all.given
-import org.aulune.commons.pagination.CursorEncoder
+import org.aulune.commons.pagination.cursor.CursorEncoder
 import org.aulune.commons.types.Uuid
 
 

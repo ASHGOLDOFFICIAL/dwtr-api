@@ -46,7 +46,8 @@ import cats.effect.std.UUIDGen
 import cats.syntax.all.given
 import fs2.Stream
 import org.aulune.commons.errors.{ErrorInfo, ErrorResponse}
-import org.aulune.commons.pagination.{CursorEncoder, PaginationParamsParser}
+import org.aulune.commons.pagination.cursor.CursorEncoder
+import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.search.SearchParamsParser
 import org.aulune.commons.service.auth.User
