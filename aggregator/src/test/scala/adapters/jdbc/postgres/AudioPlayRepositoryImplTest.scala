@@ -7,6 +7,7 @@ import domain.errors.AudioPlayConstraint
 import domain.model.audioplay.series.AudioPlaySeries
 import domain.model.audioplay.{
   AudioPlay,
+  AudioPlayFilterField,
   AudioPlaySeason,
   AudioPlaySeriesNumber,
   AudioPlayTitle,
@@ -20,11 +21,12 @@ import domain.model.shared.{
   Synopsis,
 }
 import domain.repositories.AudioPlayRepository
-import domain.repositories.AudioPlayRepository.AudioPlayCursor
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.repositories.RepositoryError.{
   ConstraintViolation,
@@ -51,6 +53,7 @@ final class AudioPlayRepositoryImplTest
   private val audioPlayTest = AudioPlays.audioPlay1
   private val audioPlayTests =
     List(AudioPlays.audioPlay1, AudioPlays.audioPlay2, AudioPlays.audioPlay3)
+      .sortBy(_.id.toString)
   private val updatedAudioPlayTest = audioPlayTest
     .update(
       title = AudioPlayTitle.unsafe("Updated"),
@@ -201,24 +204,27 @@ final class AudioPlayRepositoryImplTest
   "list method " - {
     "should " - {
       "return empty list if no audio play's available" in stand { repo =>
-        for audios <- repo.list(None, 10)
+        for audios <- repo.list(10, None)
         yield audios shouldBe Nil
       }
 
       "return no more than asked" in stand { repo =>
         for
           _ <- persistAudios(repo)
-          audios <- repo.list(None, 2)
+          audios <- repo.list(2, None)
         yield audios shouldBe audioPlayTests.take(2)
       }
 
-      "continue listing if token is given" in stand { repo =>
+      "use filter" in stand { repo =>
         for
           _ <- persistAudios(repo)
-          first <- repo.list(None, 1).map(_.head)
-          cursor = AudioPlayCursor(first.id)
-          rest <- repo.list(Some(cursor), 1)
-        yield rest.head shouldBe audioPlayTests(1)
+          first <- repo.list(1, None).map(_.head)
+          filter = Condition(
+            AudioPlayFilterField.Id,
+            GreaterThan,
+            Literal(first.id.toString))
+          second <- repo.list(1, Some(filter)).map(_.head)
+        yield List(first, second) shouldBe audioPlayTests.take(2)
       }
     }
   }

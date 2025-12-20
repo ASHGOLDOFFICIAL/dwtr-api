@@ -48,3 +48,10 @@ trait BaseAggregatorErrorResponses:
     message = "Given filter is not valid.",
     details = ErrorDetails(),
   )
+
+  val differentArguments: ErrorResponse = ErrorResponse(
+    status = InvalidArgument,
+    message = "All arguments are expected to stay the same " +
+      "when list request is used with next page token.",
+    details = ErrorDetails(),
+  )

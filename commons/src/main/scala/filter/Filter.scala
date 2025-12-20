@@ -6,6 +6,8 @@ package filter
  *  @tparam A fields available in expression.
  */
 enum Filter[A]:
+  self =>
+
   case Condition(
       field: A,
       operator: Filter.Operator,
@@ -14,6 +16,21 @@ enum Filter[A]:
   case And(left: Filter[A], right: Filter[A])
   case Or(left: Filter[A], right: Filter[A])
   case Not(expr: Filter[A])
+
+  /** Negation operation.
+   *  @return `Not` of this filter.
+   */
+  def unary_not: Filter[A] = Not(self)
+
+  /** Makes logical and with another filter.
+   *  @return `And` of this and other.
+   */
+  infix def and(other: Filter[A]): Filter[A] = And(self, other)
+
+  /** Makes logical or with another filter.
+   *  @return `Or` of this and other.
+   */
+  infix def or(other: Filter[A]): Filter[A] = Or(self, other)
 
 
 object Filter:

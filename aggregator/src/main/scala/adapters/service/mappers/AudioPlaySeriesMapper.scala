@@ -46,18 +46,6 @@ private[service] object AudioPlaySeriesMapper:
   def toResponse(domain: AudioPlaySeries): AudioPlaySeriesResource =
     AudioPlaySeriesResource(id = domain.id, name = domain.name)
 
-  /** Converts list of domain objects to one list response.
-   *  @param elems list of domain objects.
-   */
-  def toListResponse(
-      elems: List[AudioPlaySeries],
-  ): ListAudioPlaySeriesResponse =
-    val nextPageToken = elems.lastOption.map { elem =>
-      val cursor = AudioPlaySeriesRepository.Cursor(elem.id)
-      CursorEncoder[AudioPlaySeriesRepository.Cursor].encode(cursor)
-    }
-    ListAudioPlaySeriesResponse(elems.map(toResponse), nextPageToken)
-
   /** Converts list of domain objects to one search response.
    *  @param elems list of domain objects.
    */

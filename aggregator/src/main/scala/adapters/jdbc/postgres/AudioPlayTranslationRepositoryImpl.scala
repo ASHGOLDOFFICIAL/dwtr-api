@@ -8,8 +8,8 @@ import adapters.jdbc.postgres.metas.SharedMetas.given
 import domain.errors.TranslationConstraint
 import domain.model.audioplay.translation.{
   AudioPlayTranslation,
-  AudioPlayTranslationFilterField,
   AudioPlayTranslationType,
+  AudioPlayTranslationFilterField as FilterField,
 }
 import domain.model.audioplay.{AudioPlay, translation}
 import domain.model.shared.{
@@ -19,7 +19,6 @@ import domain.model.shared.{
   TranslatedTitle,
 }
 import domain.repositories.AudioPlayTranslationRepository
-import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCursor
 
 import cats.MonadThrow
 import cats.effect.MonadCancelThrow
@@ -34,6 +33,7 @@ import org.aulune.commons.adapters.doobie.postgres.ErrorUtils.{
   toInternalError,
 }
 import org.aulune.commons.adapters.doobie.postgres.Metas.uuidMeta
+import org.aulune.commons.adapters.doobie.queries.ListQueryMaker
 import org.aulune.commons.filter.Filter
 import org.aulune.commons.filter.instances.DoobieFragmentFilterEvaluator
 import org.aulune.commons.repositories.RepositoryError
@@ -151,13 +151,10 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
 
   override def list(
       count: Int,
-      cursor: Option[AudioPlayTranslationCursor],
-      filter: Option[Filter[AudioPlayTranslationFilterField]],
+      filter: Option[Filter[FilterField]],
   ): F[List[AudioPlayTranslation]] = (for
     _ <- checkIfPositive(count)
-    query <- MonadThrow[F]
-      .fromEither(makeListQuery(count, cursor, filter))
-      .flatTap(f => println(f.toString).pure)
+    query <- MonadThrow[F].fromEither(listQueryMaker.make(count, filter))
     result <- query.stripMargin
       .query[SelectResult]
       .map(toTranslation)
@@ -165,22 +162,6 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
       .transact(transactor)
   yield result)
     .handleErrorWith(toInternalError)
-
-  private def makeListQuery(
-      count: Int,
-      cursor: Option[AudioPlayTranslationCursor],
-      filter: Option[Filter[AudioPlayTranslationFilterField]],
-  ): Either[RepositoryError, Fragment] = filter
-    .traverse(filterEvaluator.eval)
-    .map { optFilterFragment =>
-      val where = (cursor, optFilterFragment) match
-        case (Some(c), Some(f)) => fr"WHERE (id > ${c.id}) AND" ++ f
-        case (Some(c), None)    => fr0"WHERE (id > ${c.id})"
-        case (None, Some(f))    => fr"WHERE" ++ f
-        case (None, None)       => Fragment.empty
-      selectBase ++ where ++ fr0" LIMIT $count"
-    }
-    .leftMap(_ => RepositoryError.InvalidArgument)
 
   private type SelectResult = (
       Uuid[AudioPlay],
@@ -218,9 +199,7 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     externalResources = resources,
   )
 
-  private val filterEvaluator
-      : DoobieFragmentFilterEvaluator[AudioPlayTranslationFilterField] =
-    DoobieFragmentFilterEvaluator[AudioPlayTranslationFilterField] {
-      case AudioPlayTranslationFilterField.OriginalId =>
-        NonEmptyString("original_id::text")
-    }
+  private val listQueryMaker = ListQueryMaker[FilterField](selectBase) {
+    case FilterField.Id         => NonEmptyString("id::text")
+    case FilterField.OriginalId => NonEmptyString("original_id::text")
+  }

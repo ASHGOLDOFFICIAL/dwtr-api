@@ -18,7 +18,10 @@ import application.errors.AudioPlaySeriesServiceError.{
   InvalidSeries,
   SeriesNotFound,
 }
-import domain.model.audioplay.series.AudioPlaySeries
+import domain.model.audioplay.series.{
+  AudioPlaySeries,
+  AudioPlaySeriesFilterField,
+}
 import domain.repositories.AudioPlaySeriesRepository
 
 import cats.data.NonEmptyList
@@ -27,7 +30,8 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.errors.ErrorStatus.PermissionDenied
-import org.aulune.commons.pagination.cursor.CursorEncoder
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.{
   Permission,
@@ -39,6 +43,7 @@ import org.aulune.commons.testing.ErrorAssertions.{
   assertInternalError,
 }
 import org.aulune.commons.testing.instances.UUIDGenInstances.makeFixedUuidGen
+import org.aulune.commons.testing.syntax.getRight
 import org.aulune.commons.typeclasses.SortableUUIDGen
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 import org.scalamock.scalatest.AsyncMockFactory
@@ -78,6 +83,7 @@ final class AudioPlaySeriesServiceImplTest
       .expects(*)
       .returning(().asRight.pure)
       .anyNumberOfTimes()
+
     AudioPlaySeriesServiceImpl
       .build(
         2,
@@ -159,7 +165,7 @@ final class AudioPlaySeriesServiceImplTest
           pageSize = 1.some,
           pageToken = None,
         )
-        val _ = (mockRepo.list _).expects(None, 1).returning(List(series).pure)
+        val _ = (mockRepo.list _).expects(1, None).returning(List(series).pure)
         for result <- service.list(request)
         yield result match
           case Left(_)     => fail("Error was not expected")
@@ -167,24 +173,31 @@ final class AudioPlaySeriesServiceImplTest
       }
 
       "return next page when asked" in stand { service =>
-        val cursor = AudioPlaySeriesRepository.Cursor(series.id)
-        val prevToken = CursorEncoder[AudioPlaySeriesRepository.Cursor]
-          .encode(cursor)
-
         val request = ListAudioPlaySeriesRequest(
           pageSize = 1.some,
-          pageToken = prevToken.some,
+          pageToken = None,
         )
-        val _ = (mockRepo.list _)
-          .expects(cursor.some, 1)
-          .returning(List(AudioPlaySeriesStubs.series2).pure)
-        val response =
-          AudioPlaySeriesMapper.toResponse(AudioPlaySeriesStubs.series2)
 
-        for result <- service.list(request)
-        yield result match
-          case Left(_)     => fail("Error was not expected")
-          case Right(list) => list.audioPlaySeries shouldBe List(response)
+        val _ = (mockRepo.list _)
+          .expects(1, None)
+          .returning(List(AudioPlaySeriesStubs.series1).pure)
+
+        val filter = Condition(
+          AudioPlaySeriesFilterField.Id,
+          GreaterThan,
+          Literal(AudioPlaySeriesStubs.series1.id.toString))
+        val _ = (mockRepo.list _)
+          .expects(1, Some(filter))
+          .returning(List(AudioPlaySeriesStubs.series1).pure)
+
+        val response =
+          AudioPlaySeriesMapper.toResponse(AudioPlaySeriesStubs.series1)
+
+        for
+          first <- service.list(request)
+          newRequest = request.copy(pageToken = first.getRight.nextPageToken)
+          second <- service.list(newRequest)
+        yield second.getRight.audioPlaySeries shouldBe List(response)
       }
     }
   }

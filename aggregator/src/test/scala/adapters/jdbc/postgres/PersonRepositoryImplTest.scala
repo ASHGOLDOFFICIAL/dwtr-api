@@ -4,13 +4,15 @@ package adapters.jdbc.postgres
 
 import adapters.service.Persons
 import domain.errors.PersonConstraint
-import domain.model.person.{FullName, Person}
+import domain.model.person.{FullName, Person, PersonFilterField}
 import domain.repositories.PersonRepository
 
 import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.repositories.RepositoryError.{
   ConstraintViolation,
   FailedPrecondition,
@@ -161,24 +163,27 @@ final class PersonRepositoryImplTest
   "list method " - {
     "should " - {
       "return empty list if no person's available" in stand { repo =>
-        for audios <- repo.list(None, 10)
+        for audios <- repo.list(10, None)
         yield audios shouldBe Nil
       }
 
       "return no more than asked" in stand { repo =>
         for
           _ <- persistMany(repo)
-          audios <- repo.list(None, 2)
+          audios <- repo.list(2, None)
         yield audios shouldBe personList.take(2)
       }
 
-      "continue listing if token is given" in stand { repo =>
+      "use filter" in stand { repo =>
         for
           _ <- persistMany(repo)
-          first <- repo.list(None, 1).map(_.head)
-          cursor = PersonRepository.Cursor(first.id)
-          rest <- repo.list(Some(cursor), 1)
-        yield rest.head shouldBe personList(1)
+          first <- repo.list(1, None).map(_.head)
+          filter = Condition(
+            PersonFilterField.Id,
+            GreaterThan,
+            Literal(first.id.toString))
+          second <- repo.list(1, Some(filter)).map(_.head)
+        yield List(first, second) shouldBe personList.take(2)
       }
     }
   }
