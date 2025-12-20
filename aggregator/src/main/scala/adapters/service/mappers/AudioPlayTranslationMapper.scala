@@ -2,24 +2,23 @@ package org.aulune.aggregator
 package adapters.service.mappers
 
 
-import application.dto.audioplay.translation.{
-  AudioPlayTranslationResource,
-  CreateAudioPlayTranslationRequest,
-  ListAudioPlayTranslationsResponse,
+import application.dto.translation.{
+  CreateTranslationRequest,
+  TranslationResource,
 }
 import domain.errors.TranslationValidationError
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.translation.AudioPlayTranslation
-import domain.model.shared.{SelfHostedLocation, TranslatedTitle}
+import domain.model.shared.SelfHostedLocation
+import domain.model.translation.{TranslatedTitle, Translation}
 
-import cats.data.{NonEmptyList, ValidatedNec}
+import cats.data.ValidatedNec
 import cats.syntax.all.given
-import org.aulune.commons.pagination.cursor.CursorEncoder
 import org.aulune.commons.types.Uuid
 
 
 /** Mapper between external audio play translation DTOs and domain's
- *  [[AudioPlayTranslation]].
+ *  [[Translation]].
+ *
  *  @note Should not be used outside `service` package to not expose domain
  *    type.
  */
@@ -30,16 +29,16 @@ private[service] object AudioPlayTranslationMapper:
    *  @return created domain object if valid.
    */
   def fromRequest(
-      request: CreateAudioPlayTranslationRequest,
-      id: Uuid[AudioPlayTranslation],
-  ): ValidatedNec[TranslationValidationError, AudioPlayTranslation] = (for
+      request: CreateTranslationRequest,
+      id: Uuid[Translation],
+  ): ValidatedNec[TranslationValidationError, Translation] = (for
     title <- TranslatedTitle(request.title)
     translationType = AudioPlayTranslationTypeMapper
       .toDomain(request.translationType)
     language = LanguageMapper.toDomain(request.language)
     location <- request.selfHostedLocation.map(SelfHostedLocation.apply)
     resources = request.externalResources.map(ExternalResourceMapper.toDomain)
-  yield AudioPlayTranslation(
+  yield Translation(
     originalId = Uuid[AudioPlay](request.originalId),
     id = id,
     title = title,
@@ -52,8 +51,8 @@ private[service] object AudioPlayTranslationMapper:
   /** Converts domain object to response object.
    *  @param domain entity to use as a base.
    */
-  def makeResource(domain: AudioPlayTranslation): AudioPlayTranslationResource =
-    AudioPlayTranslationResource(
+  def makeResource(domain: Translation): TranslationResource =
+    TranslationResource(
       originalId = domain.originalId,
       id = domain.id,
       title = domain.title,

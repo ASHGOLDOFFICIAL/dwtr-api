@@ -2,8 +2,6 @@ package org.aulune.aggregator
 package domain.model.audioplay
 
 
-import domain.model.audioplay.translation.AudioPlayTranslation
-
 import org.aulune.commons.filter.{Filter, FilterField}
 import org.aulune.commons.types.NonEmptyString
 

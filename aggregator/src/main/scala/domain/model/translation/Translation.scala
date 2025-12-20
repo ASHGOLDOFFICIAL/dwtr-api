@@ -1,16 +1,11 @@
 package org.aulune.aggregator
-package domain.model.audioplay.translation
+package domain.model.translation
 
 
 import domain.errors.TranslationValidationError
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.translation.AudioPlayTranslation.ValidationResult
-import domain.model.shared.{
-  ExternalResource,
-  Language,
-  SelfHostedLocation,
-  TranslatedTitle,
-}
+import Translation.ValidationResult
+import domain.model.shared.{ExternalResource, Language, SelfHostedLocation}
 
 import cats.data.{NonEmptyList, Validated, ValidatedNec}
 import cats.syntax.all.given
@@ -19,7 +14,7 @@ import org.aulune.commons.types.Uuid
 import java.net.URI
 
 
-/** Audio play translation representation.
+/** Translation representation.
  *  @param originalId original work's ID.
  *  @param id translation ID.
  *  @param title translated title.
@@ -29,11 +24,11 @@ import java.net.URI
  *    can be consumed.
  *  @param externalResources links to different resources.
  */
-final case class AudioPlayTranslation private (
+final case class Translation private (
     originalId: Uuid[AudioPlay],
-    id: Uuid[AudioPlayTranslation],
+    id: Uuid[Translation],
     title: TranslatedTitle,
-    translationType: AudioPlayTranslationType,
+    translationType: TranslationType,
     language: Language,
     selfHostedLocation: Option[SelfHostedLocation],
     externalResources: List[ExternalResource],
@@ -44,13 +39,13 @@ final case class AudioPlayTranslation private (
    */
   def update(
       originalId: Uuid[AudioPlay] = originalId,
-      id: Uuid[AudioPlayTranslation] = id,
+      id: Uuid[Translation] = id,
       title: TranslatedTitle = title,
-      translationType: AudioPlayTranslationType = translationType,
+      translationType: TranslationType = translationType,
       language: Language = language,
       selfHostedLocation: Option[SelfHostedLocation] = selfHostedLocation,
       externalResources: List[ExternalResource] = externalResources,
-  ): ValidationResult[AudioPlayTranslation] = AudioPlayTranslation(
+  ): ValidationResult[Translation] = Translation(
     originalId = originalId,
     id = id,
     title = title,
@@ -61,10 +56,10 @@ final case class AudioPlayTranslation private (
   )
 
 
-object AudioPlayTranslation:
+object Translation:
   private type ValidationResult[A] = ValidatedNec[TranslationValidationError, A]
 
-  /** Creates an audio play translation with state validation.
+  /** Creates a translation with state validation.
    *  @param originalId original work ID.
    *  @param id ID.
    *  @param title translated title.
@@ -77,14 +72,14 @@ object AudioPlayTranslation:
    */
   def apply(
       originalId: Uuid[AudioPlay],
-      id: Uuid[AudioPlayTranslation],
+      id: Uuid[Translation],
       title: TranslatedTitle,
-      translationType: AudioPlayTranslationType,
+      translationType: TranslationType,
       language: Language,
       selfHostedLocation: Option[SelfHostedLocation],
       externalResources: List[ExternalResource],
-  ): ValidationResult[AudioPlayTranslation] = validateState(
-    new AudioPlayTranslation(
+  ): ValidationResult[Translation] = validateState(
+    new Translation(
       originalId = originalId,
       id = id,
       title = title,
@@ -99,13 +94,13 @@ object AudioPlayTranslation:
    */
   def unsafe(
       originalId: Uuid[AudioPlay],
-      id: Uuid[AudioPlayTranslation],
+      id: Uuid[Translation],
       title: TranslatedTitle,
-      translationType: AudioPlayTranslationType,
+      translationType: TranslationType,
       language: Language,
       selfHostedLocation: Option[SelfHostedLocation],
       externalResources: List[ExternalResource],
-  ): AudioPlayTranslation = AudioPlayTranslation(
+  ): Translation = Translation(
     originalId = originalId,
     id = id,
     title = title,
@@ -117,10 +112,10 @@ object AudioPlayTranslation:
     case Validated.Valid(a)   => a
     case Validated.Invalid(e) => throw e.head
 
-  /** Validates audio play translation state.
-   *  @param translation audio play translation.
+  /** Validates translation state.
+   *  @param translation translation to validate.
    *  @return validation result.
    */
   private def validateState(
-      translation: AudioPlayTranslation,
-  ): ValidationResult[AudioPlayTranslation] = translation.validNec
+      translation: Translation,
+  ): ValidationResult[Translation] = translation.validNec

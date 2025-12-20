@@ -4,21 +4,21 @@ package org.aulune.aggregator
 import adapters.jdbc.postgres.{
   AudioPlayRepositoryImpl,
   AudioPlaySeriesRepositoryImpl,
-  AudioPlayTranslationRepositoryImpl,
   PersonRepositoryImpl,
+  TranslationRepositoryImpl,
 }
 import adapters.s3.CoverImageStorageImpl
 import adapters.service.{
   AudioPlaySeriesServiceImpl,
   AudioPlayServiceImpl,
-  AudioPlayTranslationServiceImpl,
   PersonServiceImpl,
+  TranslationServiceImpl,
 }
 import api.http.{
   AudioPlaySeriesController,
-  AudioPlayTranslationsController,
   AudioPlaysController,
   PersonsController,
+  TranslationsController,
 }
 
 import cats.effect.Async
@@ -102,16 +102,16 @@ object AggregatorApp:
         audioServ,
         authServ).endpoints
 
-      transRepo <- AudioPlayTranslationRepositoryImpl.build[F](transactor)
-      transServ <- AudioPlayTranslationServiceImpl
+      transRepo <- TranslationRepositoryImpl.build[F](transactor)
+      transServ <- TranslationServiceImpl
         .build[F](config.pagination, transRepo, audioServ, permissionServ)
-      audioTranslationEndpoints = new AudioPlayTranslationsController[F](
+      translationEndpoints = new TranslationsController[F](
         config.pagination,
         transServ,
         authServ,
       ).endpoints
 
       allEndpoints =
-        seriesEndpoints ++ audioEndpoints ++ audioTranslationEndpoints ++ personEndpoints
+        seriesEndpoints ++ audioEndpoints ++ translationEndpoints ++ personEndpoints
     yield new AggregatorApp[F]:
       override val endpoints: List[ServerEndpoint[Any, F]] = allEndpoints

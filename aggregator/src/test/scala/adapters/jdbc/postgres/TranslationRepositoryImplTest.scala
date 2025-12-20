@@ -2,21 +2,16 @@ package org.aulune.aggregator
 package adapters.jdbc.postgres
 
 
-import adapters.service.AudioPlayTranslations
+import adapters.service.Translations
 import domain.errors.TranslationConstraint
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.translation.{
-  AudioPlayTranslation,
-  AudioPlayTranslationFilterField,
-}
-import domain.model.shared.TranslatedTitle
-import domain.repositories.AudioPlayTranslationRepository
+import domain.model.translation.{TranslatedTitle, Translation, TranslationField}
+import domain.repositories.TranslationRepository
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.aulune.commons.filter.Filter
-import org.aulune.commons.filter.Filter.Literal.StringLiteral
-import org.aulune.commons.filter.Filter.Operator.{Equal, GreaterThan}
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
 import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.repositories.RepositoryError.{
   ConstraintViolation,
@@ -30,8 +25,8 @@ import org.typelevel.log4cats.LoggerFactory
 import org.typelevel.log4cats.noop.NoOpFactory
 
 
-/** Tests for [[AudioPlayTranslationRepositoryImpl]]. */
-final class AudioPlayTranslationRepositoryImplTest
+/** Tests for [[TranslationRepositoryImpl]]. */
+final class TranslationRepositoryImplTest
     extends AsyncFreeSpec
     with AsyncIOSpec
     with Matchers
@@ -39,13 +34,13 @@ final class AudioPlayTranslationRepositoryImplTest
 
   private given loggerFactory: LoggerFactory[IO] = NoOpFactory.impl[IO]
 
-  private def stand = makeStand(AudioPlayTranslationRepositoryImpl.build[IO])
+  private def stand = makeStand(TranslationRepositoryImpl.build[IO])
 
-  private val translationTest = AudioPlayTranslations.translation1
+  private val translationTest = Translations.translation1
   private val translationTests = List(
-    AudioPlayTranslations.translation1,
-    AudioPlayTranslations.translation2,
-    AudioPlayTranslations.translation3)
+    Translations.translation1,
+    Translations.translation2,
+    Translations.translation3)
   private val updatedTranslationTest = translationTest
     .update(
       title = TranslatedTitle.unsafe("Updated"),
@@ -158,7 +153,7 @@ final class AudioPlayTranslationRepositoryImplTest
           _ <- persistTranslations(repo)
           first <- repo.list(1, None).map(_.head)
           filter = Condition(
-            AudioPlayTranslationFilterField.Id,
+            TranslationField.Id,
             GreaterThan,
             Literal(first.id.toString))
           second <- repo.list(1, Some(filter)).map(_.head)
@@ -167,9 +162,9 @@ final class AudioPlayTranslationRepositoryImplTest
     }
   }
 
-  private def persistTranslations(repo: AudioPlayTranslationRepository[IO]) =
+  private def persistTranslations(repo: TranslationRepository[IO]) =
     translationTests.foldLeft(IO.unit) { (io, audio) =>
       io >> repo.persist(audio).void
     }
 
-end AudioPlayTranslationRepositoryImplTest
+end TranslationRepositoryImplTest

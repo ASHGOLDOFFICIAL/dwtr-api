@@ -1,25 +1,25 @@
 package org.aulune.aggregator
-package api.http.tapir.audioplay.translation
+package api.http.tapir.translation
 
 
 import api.http.tapir.audioplay.AudioPlayExamples
-import application.dto.audioplay.translation.AudioPlayTranslationTypeDTO.Subtitles
-import application.dto.audioplay.translation.{
-  AudioPlayTranslationLocationResource,
-  AudioPlayTranslationResource,
-  CreateAudioPlayTranslationRequest,
-  ListAudioPlayTranslationsRequest,
-  ListAudioPlayTranslationsResponse,
-}
 import application.dto.shared.ExternalResourceDTO
 import application.dto.shared.ExternalResourceTypeDTO.Download
 import application.dto.shared.LanguageDTO.Russian
+import application.dto.translation.TranslationTypeDTO.Subtitles
+import application.dto.translation.{
+  CreateTranslationRequest,
+  ListTranslationsRequest,
+  ListTranslationsResponse,
+  TranslationLocationResource,
+  TranslationResource,
+}
 
 import java.net.URI
 import java.util.{Base64, UUID}
 
 
-object AudioPlayTranslationExamples:
+object TranslationExamples:
   private val titleExample = "Но негодяи были пойманы"
   private val translationTypeExample = Subtitles
   private val languageExample = Russian
@@ -36,17 +36,16 @@ object AudioPlayTranslationExamples:
   private val nextTokenExample =
     Some(Base64.getEncoder.encodeToString(titleExample.getBytes))
 
-  val CreateRequest: CreateAudioPlayTranslationRequest =
-    CreateAudioPlayTranslationRequest(
-      originalId = AudioPlayExamples.Resource.id,
-      title = titleExample,
-      translationType = translationTypeExample,
-      language = languageExample,
-      selfHostedLocation = None,
-      externalResources = externalResourcesExample,
-    )
+  val CreateRequest: CreateTranslationRequest = CreateTranslationRequest(
+    originalId = AudioPlayExamples.Resource.id,
+    title = titleExample,
+    translationType = translationTypeExample,
+    language = languageExample,
+    selfHostedLocation = None,
+    externalResources = externalResourcesExample,
+  )
 
-  val Resource: AudioPlayTranslationResource = AudioPlayTranslationResource(
+  val Resource: TranslationResource = TranslationResource(
     originalId = AudioPlayExamples.Resource.id,
     id = UUID.fromString("8f7c586f-7043-4e47-9021-45e41a9e6f9c"),
     title = titleExample,
@@ -55,13 +54,12 @@ object AudioPlayTranslationExamples:
     externalResources = externalResourcesExample,
   )
 
-  val ListResponse: ListAudioPlayTranslationsResponse =
-    ListAudioPlayTranslationsResponse(
-      translations = List(Resource),
-      nextPageToken = nextTokenExample,
-    )
+  val ListResponse: ListTranslationsResponse = ListTranslationsResponse(
+    translations = List(Resource),
+    nextPageToken = nextTokenExample,
+  )
 
-  val GetSelfHostedLocationResponse: AudioPlayTranslationLocationResource =
-    AudioPlayTranslationLocationResource(
+  val GetSelfHostedLocationResponse: TranslationLocationResource =
+    TranslationLocationResource(
       uri = selfHostedLocationExample,
     )
