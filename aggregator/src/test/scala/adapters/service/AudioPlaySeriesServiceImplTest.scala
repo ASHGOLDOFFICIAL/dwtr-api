@@ -27,7 +27,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.errors.ErrorStatus.PermissionDenied
-import org.aulune.commons.pagination.CursorEncoder
+import org.aulune.commons.pagination.cursor.CursorEncoder
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.{
   Permission,

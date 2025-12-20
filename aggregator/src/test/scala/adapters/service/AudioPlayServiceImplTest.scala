@@ -5,7 +5,7 @@ package adapters.service
 import adapters.service.mappers.{
   AudioPlayMapper,
   EpisodeTypeMapper,
-  ReleaseDateMapper,
+  ReleaseDateMapper
 }
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
 import application.AudioPlayService
@@ -57,6 +57,7 @@ import org.aulune.commons.testing.ErrorAssertions.{
   assertInternalError,
 }
 import org.aulune.commons.testing.instances.UUIDGenInstances.makeFixedUuidGen
+import org.aulune.commons.testing.syntax.*
 import org.aulune.commons.typeclasses.SortableUUIDGen
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 import org.aulune.commons.utils.imaging.{
@@ -196,20 +197,22 @@ final class AudioPlayServiceImplTest
       "return next page when asked" in stand { service =>
         val request = ListAudioPlaysRequest(
           pageSize = 1.some,
-          pageToken = "M2Y4YTIwMmUtNjA5ZC00OWIyLWE2NDMtOTA3YjM0MWNlYTY2".some,
+          pageToken = None,
         )
-        val cursor = AudioPlayCursor(audioPlay.id).some
+
+        val cursor = AudioPlayCursor(AudioPlays.audioPlay2.id).some
+        val _ = (mockRepo.list _)
+          .expects(None, 1)
+          .returning(List(AudioPlays.audioPlay2).pure)
         val _ = (mockRepo.list _)
           .expects(cursor, 1)
-          .returning(List(AudioPlays.audioPlay2).pure)
-        val response = AudioPlayMapper.makeResource(
-          AudioPlays.audioPlay2,
-          AudioPlays.audioPlay2.seriesId.map(AudioPlaySeriesStubs.resourceById),
-          Persons.resourceById)
-        for result <- service.list(request)
-        yield result match
-          case Left(_)     => fail("Error was not expected")
-          case Right(list) => list.audioPlays shouldBe List(response)
+          .returning(List(audioPlay).pure)
+
+        for
+          first <- service.list(request)
+          secondRequest = request.copy(pageToken = first.getRight.nextPageToken)
+          result <- service.list(secondRequest)
+        yield result.getRight.audioPlays shouldBe List(resource)
       }
     }
   }

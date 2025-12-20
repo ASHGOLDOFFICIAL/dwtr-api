@@ -1,5 +1,5 @@
 package org.aulune.commons
-package pagination
+package pagination.params
 
 
 /** Parameters to use for cursor-based pagination.

@@ -1,7 +1,11 @@
 package org.aulune.commons
 package types
 
+
+import pagination.cursor.{ByteDecoder, ByteEncoder}
+
 import scala.compiletime.error
+
 
 /** Non-empty string. */
 opaque type NonEmptyString <: String = String
@@ -29,3 +33,8 @@ object NonEmptyString:
   def unsafe(string: String): NonEmptyString = from(string) match
     case Some(value) => value
     case None        => throw new IllegalArgumentException()
+
+  given byteEncoder[A]: ByteEncoder[NonEmptyString] = ByteEncoder.forString
+
+  given byteDecoder[A]: ByteDecoder[NonEmptyString] =
+    ByteDecoder.forString.map(NonEmptyString.from)

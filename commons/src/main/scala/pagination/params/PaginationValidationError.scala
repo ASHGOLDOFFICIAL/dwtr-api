@@ -1,5 +1,5 @@
 package org.aulune.commons
-package pagination
+package pagination.params
 
 import scala.util.control.NoStackTrace
 

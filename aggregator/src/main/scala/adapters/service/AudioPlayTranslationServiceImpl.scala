@@ -38,7 +38,7 @@ import cats.data.EitherT
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.filter.FilterParser
-import org.aulune.commons.pagination.PaginationParamsParser
+import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.PermissionClientService
 import org.aulune.commons.service.permission.PermissionClientService.requirePermissionOrDeny

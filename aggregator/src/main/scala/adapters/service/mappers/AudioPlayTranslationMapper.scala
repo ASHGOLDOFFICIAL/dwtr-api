@@ -15,7 +15,7 @@ import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCu
 
 import cats.data.{NonEmptyList, ValidatedNec}
 import cats.syntax.all.given
-import org.aulune.commons.pagination.CursorEncoder
+import org.aulune.commons.pagination.cursor.CursorEncoder
 import org.aulune.commons.types.Uuid
 
 

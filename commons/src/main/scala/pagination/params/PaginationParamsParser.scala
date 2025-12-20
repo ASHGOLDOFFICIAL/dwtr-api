@@ -1,14 +1,19 @@
 package org.aulune.commons
-package pagination
+package pagination.params
 
 
-import pagination.PaginationValidationError.{InvalidPageSize, InvalidPageToken}
+import pagination.cursor.CursorDecoder
+import pagination.params.PaginationValidationError.{
+  InvalidPageSize,
+  InvalidPageToken,
+}
 
 import cats.data.{Validated, ValidatedNec}
 import cats.syntax.all.given
 
 
 /** Parser of pagination params.
+ *
  *  @see [[https://google.aip.dev/158 Google's AIP]].
  */
 object PaginationParamsParser:
