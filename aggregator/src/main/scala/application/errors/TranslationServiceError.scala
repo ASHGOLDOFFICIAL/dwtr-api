@@ -2,12 +2,13 @@ package org.aulune.aggregator
 package application.errors
 
 
-import application.AudioPlayTranslationService
+import application.TranslationService
 
 import org.aulune.commons.errors.ErrorReason
 
 
-/** Errors that can occur in [[AudioPlayTranslationService]].
+/** Errors that can occur in [[TranslationService]].
+ *
  *  @param reason string representation of error.
  */
 enum TranslationServiceError(val reason: String) extends ErrorReason(reason):

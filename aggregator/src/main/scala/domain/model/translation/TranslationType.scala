@@ -1,9 +1,9 @@
 package org.aulune.aggregator
-package application.dto.audioplay.translation
+package domain.model.translation
 
 
-/** Values to be used as translation type. */
-enum AudioPlayTranslationTypeDTO:
+/** Possible translation types. */
+enum TranslationType:
   /** Translated as document. */
   case Transcript
 

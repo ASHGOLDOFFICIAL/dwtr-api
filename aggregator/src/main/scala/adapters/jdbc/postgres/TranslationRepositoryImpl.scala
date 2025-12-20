@@ -2,30 +2,26 @@ package org.aulune.aggregator
 package adapters.jdbc.postgres
 
 
-import adapters.jdbc.postgres.AudioPlayTranslationRepositoryImpl.handleConstraintViolation
-import adapters.jdbc.postgres.metas.AudioPlayTranslationMetas.given
+import adapters.jdbc.postgres.TranslationRepositoryImpl.handleConstraintViolation
 import adapters.jdbc.postgres.metas.SharedMetas.given
+import adapters.jdbc.postgres.metas.TranslationMetas.given
 import domain.errors.TranslationConstraint
-import domain.model.audioplay.translation.{
-  AudioPlayTranslation,
-  AudioPlayTranslationType,
-  AudioPlayTranslationFilterField as FilterField,
-}
-import domain.model.audioplay.{AudioPlay, translation}
-import domain.model.shared.{
-  ExternalResource,
-  Language,
-  SelfHostedLocation,
+import domain.model.audioplay.AudioPlay
+import domain.model.shared.{ExternalResource, Language, SelfHostedLocation}
+import domain.model.translation.{
   TranslatedTitle,
+  Translation,
+  TranslationField,
+  TranslationType,
 }
-import domain.repositories.AudioPlayTranslationRepository
+import domain.repositories.TranslationRepository
 
 import cats.MonadThrow
 import cats.effect.MonadCancelThrow
 import cats.syntax.all.given
+import doobie.Transactor
 import doobie.implicits.toSqlInterpolator
 import doobie.syntax.all.given
-import doobie.{Fragment, Transactor}
 import org.aulune.commons.adapters.doobie.postgres.ErrorUtils.{
   checkIfPositive,
   checkIfUpdated,
@@ -35,27 +31,25 @@ import org.aulune.commons.adapters.doobie.postgres.ErrorUtils.{
 import org.aulune.commons.adapters.doobie.postgres.Metas.uuidMeta
 import org.aulune.commons.adapters.doobie.queries.ListQueryMaker
 import org.aulune.commons.filter.Filter
-import org.aulune.commons.filter.instances.DoobieFragmentFilterEvaluator
-import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 import org.typelevel.log4cats.{Logger, LoggerFactory}
 
 
-/** [[AudioPlayTranslationRepository]] implementation for PostgreSQL. */
-object AudioPlayTranslationRepositoryImpl:
+/** [[TranslationRepository]] implementation for PostgreSQL. */
+object TranslationRepositoryImpl:
   /** Builds an instance.
    *  @param transactor [[Transactor]] instance.
    *  @tparam F effect type.
    */
   def build[F[_]: MonadCancelThrow: LoggerFactory](
       transactor: Transactor[F],
-  ): F[AudioPlayTranslationRepository[F]] =
+  ): F[TranslationRepository[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
     for _ <- createTranslationsTable.transact(transactor)
-    yield AudioPlayTranslationRepositoryImpl[F](transactor)
+    yield TranslationRepositoryImpl[F](transactor)
 
   private val createTranslationsTable = sql"""
-    |CREATE TABLE IF NOT EXISTS audio_play_translations (
+    |CREATE TABLE IF NOT EXISTS translations (
     |  original_id   UUID    NOT NULL,
     |  id            UUID    NOT NULL PRIMARY KEY,
     |  title         TEXT    NOT NULL,
@@ -63,11 +57,11 @@ object AudioPlayTranslationRepositoryImpl:
     |  language      TEXT    NOT NULL,
     |  self_host_uri TEXT,
     |  resources     JSONB   NOT NULL,
-    |  CONSTRAINT audio_play_translations_unique_id UNIQUE (id)
+    |  CONSTRAINT translations_unique_id UNIQUE (id)
     |)""".stripMargin.update.run
 
   private val constraintMap = Map(
-    "audio_play_translations_unique_id" -> TranslationConstraint.UniqueId,
+    "translations_unique_id" -> TranslationConstraint.UniqueId,
   )
 
   /** Converts constraint violations. */
@@ -76,18 +70,18 @@ object AudioPlayTranslationRepositoryImpl:
       constraintMap,
     )
 
-end AudioPlayTranslationRepositoryImpl
+end TranslationRepositoryImpl
 
 
-private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
+private final class TranslationRepositoryImpl[F[_]: MonadCancelThrow](
     transactor: Transactor[F],
 )(using
     logger: Logger[F],
-) extends AudioPlayTranslationRepository[F]:
+) extends TranslationRepository[F]:
 
-  override def contains(id: Uuid[AudioPlayTranslation]): F[Boolean] = sql"""
+  override def contains(id: Uuid[Translation]): F[Boolean] = sql"""
     |SELECT EXISTS (
-    |  SELECT 1 FROM audio_play_translations
+    |  SELECT 1 FROM translations
     |  WHERE id = $id
     |)""".stripMargin
     .query[Boolean]
@@ -96,9 +90,9 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     .handleErrorWith(toInternalError)
 
   override def persist(
-      elem: AudioPlayTranslation,
-  ): F[AudioPlayTranslation] = sql"""
-    |INSERT INTO audio_play_translations (
+      elem: Translation,
+  ): F[Translation] = sql"""
+    |INSERT INTO translations (
     |  original_id, id,
     |  title, type, language,
     |  self_host_uri, resources
@@ -114,8 +108,8 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     .handleErrorWith(toInternalError)
 
   override def get(
-      id: Uuid[AudioPlayTranslation],
-  ): F[Option[AudioPlayTranslation]] =
+      id: Uuid[Translation],
+  ): F[Option[Translation]] =
     val query = selectBase ++ fr0"WHERE id = $id"
     query
       .query[SelectResult]
@@ -125,9 +119,9 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
       .handleErrorWith(toInternalError)
 
   override def update(
-      elem: AudioPlayTranslation,
-  ): F[AudioPlayTranslation] = sql"""
-      |UPDATE audio_play_translations
+      elem: Translation,
+  ): F[Translation] = sql"""
+      |UPDATE translations
       |SET original_id   = ${elem.originalId},
       |    title         = ${elem.title},
       |    type          = ${elem.translationType},
@@ -143,16 +137,15 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     .handleErrorWith(toInternalError)
 
   override def delete(
-      id: Uuid[AudioPlayTranslation],
-  ): F[Unit] =
-    sql"DELETE FROM audio_play_translations WHERE id = $id".update.run.void
-      .transact(transactor)
-      .handleErrorWith(toInternalError)
+      id: Uuid[Translation],
+  ): F[Unit] = sql"DELETE FROM translations WHERE id = $id".update.run.void
+    .transact(transactor)
+    .handleErrorWith(toInternalError)
 
   override def list(
       count: Int,
-      filter: Option[Filter[FilterField]],
-  ): F[List[AudioPlayTranslation]] = (for
+      filter: Option[Filter[TranslationField]],
+  ): F[List[Translation]] = (for
     _ <- checkIfPositive(count)
     query <- MonadThrow[F].fromEither(listQueryMaker.make(count, filter))
     result <- query.stripMargin
@@ -165,9 +158,9 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
 
   private type SelectResult = (
       Uuid[AudioPlay],
-      Uuid[AudioPlayTranslation],
+      Uuid[Translation],
       TranslatedTitle,
-      AudioPlayTranslationType,
+      TranslationType,
       Language,
       Option[SelfHostedLocation],
       List[ExternalResource],
@@ -178,18 +171,18 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     |  original_id, id,
     |  title, type, language,
     |  self_host_uri, resources
-    |FROM audio_play_translations""".stripMargin
+    |FROM translations""".stripMargin
 
   /** Makes translation from given data. */
   private def toTranslation(
       originalId: Uuid[AudioPlay],
-      id: Uuid[AudioPlayTranslation],
+      id: Uuid[Translation],
       title: TranslatedTitle,
-      translationType: AudioPlayTranslationType,
+      translationType: TranslationType,
       language: Language,
       selfHostLocation: Option[SelfHostedLocation],
       resources: List[ExternalResource],
-  ): AudioPlayTranslation = AudioPlayTranslation.unsafe(
+  ): Translation = Translation.unsafe(
     originalId = originalId,
     id = id,
     title = title,
@@ -199,7 +192,7 @@ private final class AudioPlayTranslationRepositoryImpl[F[_]: MonadCancelThrow](
     externalResources = resources,
   )
 
-  private val listQueryMaker = ListQueryMaker[FilterField](selectBase) {
-    case FilterField.Id         => NonEmptyString("id::text")
-    case FilterField.OriginalId => NonEmptyString("original_id::text")
+  private val listQueryMaker = ListQueryMaker[TranslationField](selectBase) {
+    case TranslationField.Id         => NonEmptyString("id::text")
+    case TranslationField.OriginalId => NonEmptyString("original_id::text")
   }

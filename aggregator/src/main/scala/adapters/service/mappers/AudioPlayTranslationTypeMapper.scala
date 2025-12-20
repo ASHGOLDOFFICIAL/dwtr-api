@@ -2,38 +2,37 @@ package org.aulune.aggregator
 package adapters.service.mappers
 
 
-import org.aulune.aggregator.application.dto.audioplay.translation.AudioPlayTranslationTypeDTO.*
-import org.aulune.aggregator.application.dto.audioplay.translation.AudioPlayTranslationTypeDTO
-import org.aulune.aggregator.domain.model.audioplay.translation.AudioPlayTranslationType
+import application.dto.translation.TranslationTypeDTO
+import application.dto.translation.TranslationTypeDTO.*
+import domain.model.translation.TranslationType
 
 
-/** Mapper between external [[AudioPlayTranslationTypeDTO]] and domain's
- *  [[AudioPlayTranslationType]].
+/** Mapper between external [[TranslationTypeDTO]] and domain's
+ *  [[TranslationType]].
  *
  *  @note Should not be used outside `service` package to not expose domain
  *    type.
  */
 private[service] object AudioPlayTranslationTypeMapper:
   private val toType = Map(
-    Transcript -> AudioPlayTranslationType.Transcript,
-    Subtitles -> AudioPlayTranslationType.Subtitles,
-    VoiceOver -> AudioPlayTranslationType.VoiceOver,
+    Transcript -> TranslationType.Transcript,
+    Subtitles -> TranslationType.Subtitles,
+    VoiceOver -> TranslationType.VoiceOver,
   )
   private val fromType = toType.map(_.swap)
 
-  /** Convert [[AudioPlayTranslationTypeDTO]] to [[AudioPlayTranslationType]].
+  /** Convert [[TranslationTypeDTO]] to [[TranslationType]].
    *
    *  @param dto external layer object.
    *  @return mapped domain object.
    */
-  def toDomain(dto: AudioPlayTranslationTypeDTO): AudioPlayTranslationType =
-    toType(dto)
+  def toDomain(dto: TranslationTypeDTO): TranslationType = toType(dto)
 
-  /** Convert [[AudioPlayTranslationType]] to [[AudioPlayTranslationTypeDTO]].
+  /** Convert [[TranslationType]] to [[TranslationTypeDTO]].
    *
    *  @param domain inner domain object.
    *  @return mapped external object.
    */
   def fromDomain(
-      domain: AudioPlayTranslationType,
-  ): AudioPlayTranslationTypeDTO = fromType(domain)
+      domain: TranslationType,
+  ): TranslationTypeDTO = fromType(domain)

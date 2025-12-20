@@ -6,29 +6,25 @@ import adapters.service.mappers.{
   AudioPlayTranslationMapper,
   AudioPlayTranslationTypeMapper,
   ExternalResourceMapper,
-  LanguageMapper,
+  LanguageMapper
 }
 import application.AggregatorPermission.Modify
-import application.AudioPlayTranslationService
-import application.dto.audioplay.translation.{
-  AudioPlayTranslationResource,
-  CreateAudioPlayTranslationRequest,
-  DeleteAudioPlayTranslationRequest,
-  GetAudioPlayTranslationRequest,
-  ListAudioPlayTranslationsRequest,
-  ListAudioPlayTranslationsResponse,
+import application.TranslationService
+import application.dto.translation.{
+  CreateTranslationRequest,
+  DeleteTranslationRequest,
+  GetTranslationRequest,
+  ListTranslationsRequest,
+  ListTranslationsResponse,
+  TranslationResource,
 }
 import application.errors.TranslationServiceError.{
   InvalidTranslation,
   OriginalNotFound,
   TranslationNotFound,
 }
-import domain.model.audioplay.translation.{
-  AudioPlayTranslation,
-  AudioPlayTranslationFilterField,
-}
-import domain.model.shared.TranslatedTitle
-import domain.repositories.AudioPlayTranslationRepository
+import domain.model.translation.{TranslatedTitle, Translation, TranslationField}
+import domain.repositories.TranslationRepository
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -61,8 +57,8 @@ import org.typelevel.log4cats.slf4j.Slf4jFactory
 import java.util.UUID
 
 
-/** Tests for [[AudioPlayTranslationServiceImpl]]. */
-final class AudioPlayTranslationServiceImplTest
+/** Tests for [[TranslationServiceImpl]]. */
+final class TranslationServiceImplTest
     extends AsyncFreeSpec
     with AsyncIOSpec
     with Matchers
@@ -70,7 +66,7 @@ final class AudioPlayTranslationServiceImplTest
 
   private given LoggerFactory[IO] = Slf4jFactory.create
 
-  private val mockRepo = mock[AudioPlayTranslationRepository[IO]]
+  private val mockRepo = mock[TranslationRepository[IO]]
   private val mockAudio = AudioPlays.service[IO]
   private val mockPermissions = mock[PermissionClientService[IO]]
 
@@ -83,13 +79,13 @@ final class AudioPlayTranslationServiceImplTest
   )
 
   private def stand(
-      testCase: AudioPlayTranslationService[IO] => IO[Assertion],
+      testCase: TranslationService[IO] => IO[Assertion],
   ): IO[Assertion] =
     val _ = (mockPermissions.registerPermission _)
       .expects(*)
       .returning(().asRight.pure)
       .anyNumberOfTimes()
-    AudioPlayTranslationServiceImpl
+    TranslationServiceImpl
       .build(
         AggregatorConfig.PaginationParams(2, 1),
         mockRepo,
@@ -98,8 +94,8 @@ final class AudioPlayTranslationServiceImplTest
       .flatMap(testCase)
   end stand
 
-  private val translation = AudioPlayTranslations.translation1
-  private val translationResponse = AudioPlayTranslationResource(
+  private val translation = Translations.translation1
+  private val translationResponse = TranslationResource(
     originalId = translation.originalId,
     id = translation.id,
     title = translation.title,
@@ -110,7 +106,7 @@ final class AudioPlayTranslationServiceImplTest
       .map(ExternalResourceMapper.fromDomain),
   )
 
-  private val newUuid = Uuid[AudioPlayTranslation](uuid)
+  private val newUuid = Uuid[Translation](uuid)
   private val newTranslation = translation
     .update(id = newUuid, title = TranslatedTitle.unsafe("Updated"))
     .getOrElse(throw new IllegalStateException())
@@ -120,7 +116,7 @@ final class AudioPlayTranslationServiceImplTest
   )
 
   "get method " - {
-    val request = GetAudioPlayTranslationRequest(translation.id)
+    val request = GetTranslationRequest(translation.id)
 
     "should " - {
       "find translations if they're present in repository" in stand { service =>
@@ -147,7 +143,7 @@ final class AudioPlayTranslationServiceImplTest
   "list method " - {
     "should " - {
       "list elements" in stand { service =>
-        val request = ListAudioPlayTranslationsRequest(
+        val request = ListTranslationsRequest(
           pageSize = 1.some,
           pageToken = None,
           filter = None,
@@ -164,7 +160,7 @@ final class AudioPlayTranslationServiceImplTest
       }
 
       "return next page when asked" in stand { service =>
-        val request = ListAudioPlayTranslationsRequest(
+        val request = ListTranslationsRequest(
           pageSize = 1.some,
           pageToken = None,
           filter = None,
@@ -172,17 +168,17 @@ final class AudioPlayTranslationServiceImplTest
 
         val _ = (mockRepo.list _)
           .expects(1, None)
-          .returning(List(AudioPlayTranslations.translation1).pure)
+          .returning(List(Translations.translation1).pure)
         val filter = Condition(
-          AudioPlayTranslationFilterField.Id,
+          TranslationField.Id,
           GreaterThan,
-          Literal(AudioPlayTranslations.translation1.id.toString))
+          Literal(Translations.translation1.id.toString))
         val _ = (mockRepo.list _)
           .expects(1, Some(filter))
-          .returning(List(AudioPlayTranslations.translation2).pure)
+          .returning(List(Translations.translation2).pure)
 
-        val response = AudioPlayTranslationMapper.makeResource(
-          AudioPlayTranslations.translation2)
+        val response =
+          AudioPlayTranslationMapper.makeResource(Translations.translation2)
 
         for
           first <- service.list(request)
@@ -194,7 +190,7 @@ final class AudioPlayTranslationServiceImplTest
   }
 
   "create method " - {
-    val request = CreateAudioPlayTranslationRequest(
+    val request = CreateTranslationRequest(
       originalId = newTranslation.originalId,
       title = newTranslation.title,
       translationType = AudioPlayTranslationTypeMapper
@@ -252,7 +248,7 @@ final class AudioPlayTranslationServiceImplTest
   }
 
   "delete method " - {
-    val request = DeleteAudioPlayTranslationRequest(translation.id)
+    val request = DeleteTranslationRequest(translation.id)
 
     "should " - {
       "allow users with permissions to delete existing translations" in stand {
@@ -284,10 +280,10 @@ final class AudioPlayTranslationServiceImplTest
     }
   }
 
-  private def mockPersist(returning: IO[AudioPlayTranslation]) =
+  private def mockPersist(returning: IO[Translation]) =
     (mockRepo.persist _).expects(newTranslation).returning(returning)
 
-  private def mockGet(returning: IO[Option[AudioPlayTranslation]]) =
+  private def mockGet(returning: IO[Option[Translation]]) =
     (mockRepo.get _).expects(translation.id).returning(returning)
 
   private def mockDelete(returning: IO[Unit]) =
@@ -300,4 +296,4 @@ final class AudioPlayTranslationServiceImplTest
     .expects(user, permission)
     .returning(returning)
 
-end AudioPlayTranslationServiceImplTest
+end TranslationServiceImplTest

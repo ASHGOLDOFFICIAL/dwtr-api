@@ -2,33 +2,26 @@ package org.aulune.aggregator
 package adapters.service
 
 
-import adapters.service.AudioPlayTranslationServiceImpl.Cursor
+import adapters.service.TranslationServiceImpl.Cursor
 import adapters.service.errors.AudioPlayTranslationServiceErrorResponses as ErrorResponses
 import adapters.service.mappers.AudioPlayTranslationMapper
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
 import application.dto.audioplay.GetAudioPlayRequest
-import application.dto.audioplay.translation.{
-  AudioPlayTranslationLocationResource,
-  AudioPlayTranslationResource,
-  CreateAudioPlayTranslationRequest,
-  DeleteAudioPlayTranslationRequest,
-  GetAudioPlayTranslationLocationRequest,
-  GetAudioPlayTranslationRequest,
-  ListAudioPlayTranslationsRequest,
-  ListAudioPlayTranslationsResponse,
+import application.dto.translation.{
+  CreateTranslationRequest,
+  DeleteTranslationRequest,
+  GetTranslationLocationRequest,
+  GetTranslationRequest,
+  ListTranslationsRequest,
+  ListTranslationsResponse,
+  TranslationLocationResource,
+  TranslationResource,
 }
 import application.errors.AudioPlayServiceError.AudioPlayNotFound
-import application.{
-  AggregatorPermission,
-  AudioPlayService,
-  AudioPlayTranslationService,
-}
+import application.{AggregatorPermission, AudioPlayService, TranslationService}
 import domain.model.audioplay.AudioPlay
-import domain.model.audioplay.translation.{
-  AudioPlayTranslation,
-  AudioPlayTranslationFilterField,
-}
-import domain.repositories.AudioPlayTranslationRepository
+import domain.model.translation.{Translation, TranslationField}
+import domain.repositories.TranslationRepository
 
 import cats.MonadThrow
 import cats.data.EitherT
@@ -49,8 +42,8 @@ import org.typelevel.log4cats.syntax.LoggerInterpolator
 import org.typelevel.log4cats.{Logger, LoggerFactory}
 
 
-/** [[AudioPlayTranslationService]] implementation. */
-object AudioPlayTranslationServiceImpl:
+/** [[TranslationService]] implementation. */
+object TranslationServiceImpl:
   /** Builds a service.
    *  @param pagination pagination config.
    *  @param repo translation repository.
@@ -63,12 +56,12 @@ object AudioPlayTranslationServiceImpl:
    */
   def build[F[_]: MonadThrow: SortableUUIDGen: LoggerFactory](
       pagination: AggregatorConfig.PaginationParams,
-      repo: AudioPlayTranslationRepository[F],
+      repo: TranslationRepository[F],
       audioPlayService: AudioPlayService[F],
       permissionService: PermissionClientService[F],
-  ): F[AudioPlayTranslationService[F]] =
+  ): F[TranslationService[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
-    val filterParser = FilterParser.make[AudioPlayTranslationFilterField]
+    val filterParser = FilterParser.make[TranslationField]
     val maybeParser = PaginationParamsParser
       .build[Cursor](pagination.default, pagination.max)
 
@@ -78,7 +71,7 @@ object AudioPlayTranslationServiceImpl:
         .fromOption(maybeParser, new IllegalArgumentException())
         .onError(_ => error"Invalid parser parameters are given.")
       _ <- permissionService.registerPermission(Modify)
-    yield new AudioPlayTranslationServiceImpl[F](
+    yield new TranslationServiceImpl[F](
       parser,
       filterParser,
       repo,
@@ -90,36 +83,34 @@ object AudioPlayTranslationServiceImpl:
    *  @param filter previously used filter expression.
    */
   private final case class Cursor(
-      id: Uuid[AudioPlayTranslation],
+      id: Uuid[Translation],
       filter: Option[NonEmptyString],
   ) derives CursorEncoder,
         CursorDecoder:
     /** Converts cursor to filter AST. */
-    def toFilter: Filter[AudioPlayTranslationFilterField] = Condition(
-      AudioPlayTranslationFilterField.Id,
-      GreaterThan,
-      Literal(id.toString))
+    def toFilter: Filter[TranslationField] =
+      Condition(TranslationField.Id, GreaterThan, Literal(id.toString))
 
-end AudioPlayTranslationServiceImpl
+end TranslationServiceImpl
 
 
-private final class AudioPlayTranslationServiceImpl[F[
+private final class TranslationServiceImpl[F[
     _,
 ]: MonadThrow: SortableUUIDGen: LoggerFactory] private (
     paginationParser: PaginationParamsParser[Cursor],
-    filterParser: FilterParser[AudioPlayTranslationFilterField],
-    repo: AudioPlayTranslationRepository[F],
+    filterParser: FilterParser[TranslationField],
+    repo: TranslationRepository[F],
     audioPlayService: AudioPlayService[F],
     permissionService: PermissionClientService[F],
-) extends AudioPlayTranslationService[F]:
+) extends TranslationService[F]:
 
   private given Logger[F] = LoggerFactory[F].getLogger
   private given PermissionClientService[F] = permissionService
 
   override def get(
-      request: GetAudioPlayTranslationRequest,
-  ): F[Either[ErrorResponse, AudioPlayTranslationResource]] =
-    val uuid = Uuid[AudioPlayTranslation](request.name)
+      request: GetTranslationRequest,
+  ): F[Either[ErrorResponse, TranslationResource]] =
+    val uuid = Uuid[Translation](request.name)
     (for
       _ <- eitherTLogger.info(s"Find request: $request.")
       elem <- EitherT
@@ -129,8 +120,8 @@ private final class AudioPlayTranslationServiceImpl[F[
     yield response).value.handleErrorWith(handleInternal)
 
   override def list(
-      request: ListAudioPlayTranslationsRequest,
-  ): F[Either[ErrorResponse, ListAudioPlayTranslationsResponse]] =
+      request: ListTranslationsRequest,
+  ): F[Either[ErrorResponse, ListTranslationsResponse]] =
     val paramsV = paginationParser.parse(request.pageSize, request.pageToken)
     (for
       _ <- eitherTLogger.info(s"List request: $request.")
@@ -151,17 +142,17 @@ private final class AudioPlayTranslationServiceImpl[F[
       nextPageToken = elems.lastOption
         .map(e => CursorEncoder[Cursor].encode(Cursor(e.id, request.filter)))
         .filter(_ => elems.size == params.pageSize)
-      response = ListAudioPlayTranslationsResponse(
+      response = ListTranslationsResponse(
         elems.map(AudioPlayTranslationMapper.makeResource),
         nextPageToken)
     yield response).value.handleErrorWith(handleInternal)
 
   override def create(
       user: User,
-      request: CreateAudioPlayTranslationRequest,
-  ): F[Either[ErrorResponse, AudioPlayTranslationResource]] =
+      request: CreateTranslationRequest,
+  ): F[Either[ErrorResponse, TranslationResource]] =
     requirePermissionOrDeny(Modify, user) {
-      val uuid = SortableUUIDGen.randomTypedUUID[F, AudioPlayTranslation]
+      val uuid = SortableUUIDGen.randomTypedUUID[F, Translation]
       val originalId = Uuid[AudioPlay](request.originalId)
       (for
         _ <- eitherTLogger.info(s"Create request $request from $user.")
@@ -180,18 +171,18 @@ private final class AudioPlayTranslationServiceImpl[F[
 
   override def delete(
       user: User,
-      request: DeleteAudioPlayTranslationRequest,
+      request: DeleteTranslationRequest,
   ): F[Either[ErrorResponse, Unit]] = requirePermissionOrDeny(Modify, user) {
-    val uuid = Uuid[AudioPlayTranslation](request.name)
+    val uuid = Uuid[Translation](request.name)
     info"Delete request $request from $user" >> repo.delete(uuid).map(_.asRight)
   }.handleErrorWith(handleInternal)
 
   override def getLocation(
       user: User,
-      request: GetAudioPlayTranslationLocationRequest,
-  ): F[Either[ErrorResponse, AudioPlayTranslationLocationResource]] =
+      request: GetTranslationLocationRequest,
+  ): F[Either[ErrorResponse, TranslationLocationResource]] =
     requirePermissionOrDeny(SeeSelfHostedLocation, user) {
-      val uuid = Uuid[AudioPlayTranslation](request.name)
+      val uuid = Uuid[Translation](request.name)
       (for
         _ <- eitherTLogger.info(s"Get location request: $request.")
         elem <- EitherT
@@ -199,7 +190,7 @@ private final class AudioPlayTranslationServiceImpl[F[
           .leftSemiflatTap(_ => warn"Couldn't find element with ID: $request")
         link <- EitherT
           .fromOption(elem.selfHostedLocation, ErrorResponses.notSelfHosted)
-        response = AudioPlayTranslationLocationResource(link)
+        response = TranslationLocationResource(link)
       yield response).value.handleErrorWith(handleInternal)
     }
 
@@ -219,8 +210,8 @@ private final class AudioPlayTranslationServiceImpl[F[
    *  @note It's only purpose is to improve readability of [[create]] method.
    */
   private def makeAudioPlayTranslation(
-      request: CreateAudioPlayTranslationRequest,
-      id: Uuid[AudioPlayTranslation],
+      request: CreateTranslationRequest,
+      id: Uuid[Translation],
   ) = AudioPlayTranslationMapper
     .fromRequest(request, id)
     .leftMap(ErrorResponses.invalidAudioPlayTranslation)

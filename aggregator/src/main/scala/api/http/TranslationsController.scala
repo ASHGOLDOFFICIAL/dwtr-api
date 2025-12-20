@@ -2,24 +2,24 @@ package org.aulune.aggregator
 package api.http
 
 
-import api.http.circe.AudioPlayTranslationCodecs.given
-import api.http.tapir.audioplay.translation.AudioPlayTranslationExamples.{
+import api.http.circe.TranslationCodecs.given
+import api.http.tapir.translation.TranslationExamples.{
   CreateRequest,
   GetSelfHostedLocationResponse,
   ListResponse,
   Resource,
 }
-import api.http.tapir.audioplay.translation.AudioPlayTranslationSchemas.given
-import application.AudioPlayTranslationService
-import application.dto.audioplay.translation.{
-  AudioPlayTranslationLocationResource,
-  AudioPlayTranslationResource,
-  CreateAudioPlayTranslationRequest,
-  DeleteAudioPlayTranslationRequest,
-  GetAudioPlayTranslationLocationRequest,
-  GetAudioPlayTranslationRequest,
-  ListAudioPlayTranslationsRequest,
-  ListAudioPlayTranslationsResponse,
+import api.http.tapir.translation.TranslationSchemas.given
+import application.TranslationService
+import application.dto.translation.{
+  CreateTranslationRequest,
+  DeleteTranslationRequest,
+  GetTranslationLocationRequest,
+  GetTranslationRequest,
+  ListTranslationsRequest,
+  ListTranslationsResponse,
+  TranslationLocationResource,
+  TranslationResource,
 }
 
 import cats.Applicative
@@ -42,15 +42,16 @@ import java.util.UUID
 
 
 /** Controller with Tapir endpoints for translations.
+ *
  *  @param pagination pagination config.
- *  @param service [[AudioPlayTranslationService]] to use.
+ *  @param service [[TranslationService]] to use.
  *  @param authService [[AuthenticationClientService]] to use for restricted
  *    endpoints.
  *  @tparam F effect type.
  */
-final class AudioPlayTranslationsController[F[_]: Applicative](
+final class TranslationsController[F[_]: Applicative](
     pagination: AggregatorConfig.PaginationParams,
-    service: AudioPlayTranslationService[F],
+    service: TranslationService[F],
     authService: AuthenticationClientService[F],
 ):
   private given AuthenticationClientService[F] = authService
@@ -58,14 +59,14 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
   private val translationId = path[UUID]("translation_id")
     .description("ID of the translation")
 
-  private val collectionPath = "audioPlayTranslations"
+  private val collectionPath = "translations"
   private val elementPath = collectionPath / translationId
-  private val tag = "AudioPlayTranslations"
+  private val tag = "Translations"
 
   private val getEndpoint = endpoint.get
     .in(elementPath)
-    .out(statusCode(StatusCode.Ok).and(jsonBody[AudioPlayTranslationResource]
-      .description("Requested audio play translation if found.")
+    .out(statusCode(StatusCode.Ok).and(jsonBody[TranslationResource]
+      .description("Requested translation if found.")
       .example(Resource)))
     .errorOut(statusCode.and(
       jsonBody[ErrorResponse].description("Description of error.")))
@@ -73,7 +74,7 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
     .summary("Returns a translation with given ID for given parent.")
     .tag(tag)
     .serverLogic { id =>
-      val request = GetAudioPlayTranslationRequest(name = id)
+      val request = GetTranslationRequest(name = id)
       for result <- service.get(request)
       yield result.leftMap(ErrorStatusCodeMapper.toApiResponse)
     }
@@ -83,17 +84,16 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
     .in(
       MethodSpecificQueryParams.pagination.and(MethodSpecificQueryParams.filter),
     )
-    .out(
-      statusCode(StatusCode.Ok).and(jsonBody[ListAudioPlayTranslationsResponse]
-        .description("List of audio plays and a token to retrieve next page.")
-        .example(ListResponse)))
+    .out(statusCode(StatusCode.Ok).and(jsonBody[ListTranslationsResponse]
+      .description("List of translations and a token to retrieve next page.")
+      .example(ListResponse)))
     .errorOut(statusCode.and(
       jsonBody[ErrorResponse].description("Description of error.")))
     .name("ListTranslations")
-    .summary("Returns the list of translation for given parent.")
+    .summary("Returns the list of translations.")
     .tag(tag)
     .serverLogic { (pageSize, pageToken, filter) =>
-      val request = ListAudioPlayTranslationsRequest(
+      val request = ListTranslationsRequest(
         pageSize = pageSize,
         pageToken = pageToken,
         filter = filter,
@@ -104,15 +104,14 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
 
   private val postEndpoint = securedEndpoint.post
     .in(collectionPath)
-    .in(jsonBody[CreateAudioPlayTranslationRequest]
+    .in(jsonBody[CreateTranslationRequest]
       .description("Translation to create")
       .example(CreateRequest))
-    .out(
-      statusCode(StatusCode.Created).and(jsonBody[AudioPlayTranslationResource]
-        .description("Created translation.")
-        .example(Resource)))
+    .out(statusCode(StatusCode.Created).and(jsonBody[TranslationResource]
+      .description("Created translation.")
+      .example(Resource)))
     .name("CreateTranslation")
-    .summary("Creates a new translation for parent resource and returns it.")
+    .summary("Creates a new translation resource and returns it.")
     .tag(tag)
     .serverLogic { user => request =>
       for result <- service.create(user, request)
@@ -126,7 +125,7 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
     .summary("Deletes translation resource with given ID.")
     .tag(tag)
     .serverLogic { user => id =>
-      val request = DeleteAudioPlayTranslationRequest(name = id)
+      val request = DeleteTranslationRequest(name = id)
       for result <- service.delete(user, request)
       yield result.leftMap(ErrorStatusCodeMapper.toApiResponse)
     }
@@ -134,15 +133,14 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
   private val getLocationEndpoint = securedEndpoint.get
     .in(elementPath / "location")
     .out(
-      statusCode(StatusCode.Ok).and(
-        jsonBody[AudioPlayTranslationLocationResource]
-          .description("Location of a self-hosted translation.")
-          .example(GetSelfHostedLocationResponse)))
-    .name("GetAudioPlayTranslationLocation")
+      statusCode(StatusCode.Ok).and(jsonBody[TranslationLocationResource]
+        .description("Location of a self-hosted translation.")
+        .example(GetSelfHostedLocationResponse)))
+    .name("GetTranslationLocation")
     .summary("Gets location of a self-hosted translation.")
     .tag(tag)
     .serverLogic { user => id =>
-      val request = GetAudioPlayTranslationLocationRequest(name = id)
+      val request = GetTranslationLocationRequest(name = id)
       for result <- service.getLocation(user, request)
       yield result.leftMap(ErrorStatusCodeMapper.toApiResponse)
     }
@@ -156,4 +154,4 @@ final class AudioPlayTranslationsController[F[_]: Applicative](
     getLocationEndpoint,
   )
 
-end AudioPlayTranslationsController
+end TranslationsController

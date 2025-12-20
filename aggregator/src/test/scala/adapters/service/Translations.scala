@@ -9,18 +9,14 @@ import domain.model.shared.ExternalResourceType.{
   Purchase,
   Streaming,
 }
-import domain.model.audioplay.translation.AudioPlayTranslation
-import domain.model.audioplay.translation.AudioPlayTranslationType.{
+import domain.model.shared.Language.{Russian, Ukrainian}
+import domain.model.shared.{ExternalResource, SelfHostedLocation}
+import domain.model.translation.TranslationType.{
   Subtitles,
   Transcript,
   VoiceOver,
 }
-import domain.model.shared.Language.{Russian, Ukrainian}
-import domain.model.shared.{
-  ExternalResource,
-  SelfHostedLocation,
-  TranslatedTitle,
-}
+import domain.model.translation.{TranslatedTitle, Translation}
 
 import cats.data.NonEmptyList
 import cats.syntax.all.given
@@ -29,9 +25,9 @@ import org.aulune.commons.types.Uuid
 import java.net.URI
 
 
-/** [[AudioPlayTranslation]] objects for testing. */
-private[aggregator] object AudioPlayTranslations:
-  val translation1: AudioPlayTranslation = AudioPlayTranslation.unsafe(
+/** [[Translation]] objects for testing. */
+private[aggregator] object Translations:
+  val translation1: Translation = Translation.unsafe(
     originalId = AudioPlays.audioPlay1.id,
     id = Uuid.unsafe("65ee0e62-4780-4777-a296-3ef0da9be7e8"),
     title = TranslatedTitle.unsafe("Title 1"),
@@ -49,7 +45,7 @@ private[aggregator] object AudioPlayTranslations:
     ),
   )
 
-  val translation2: AudioPlayTranslation = AudioPlayTranslation.unsafe(
+  val translation2: Translation = Translation.unsafe(
     originalId = AudioPlays.audioPlay2.id,
     id = Uuid.unsafe("acea1576-d1d1-4b30-b086-47e1d92afda6"),
     title = TranslatedTitle.unsafe("Title 2"),
@@ -62,7 +58,7 @@ private[aggregator] object AudioPlayTranslations:
     ),
   )
 
-  val translation3: AudioPlayTranslation = AudioPlayTranslation.unsafe(
+  val translation3: Translation = Translation.unsafe(
     originalId = AudioPlays.audioPlay3.id,
     id = Uuid.unsafe("d2106502-2a9d-4ae1-9769-50123cc4da1c"),
     title = TranslatedTitle.unsafe("Title 3"),

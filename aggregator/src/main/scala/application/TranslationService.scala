@@ -3,15 +3,15 @@ package application
 
 
 import application.AggregatorPermission.Modify
-import application.dto.audioplay.translation.{
-  AudioPlayTranslationLocationResource,
-  AudioPlayTranslationResource,
-  CreateAudioPlayTranslationRequest,
-  DeleteAudioPlayTranslationRequest,
-  GetAudioPlayTranslationLocationRequest,
-  GetAudioPlayTranslationRequest,
-  ListAudioPlayTranslationsRequest,
-  ListAudioPlayTranslationsResponse,
+import application.dto.translation.{
+  CreateTranslationRequest,
+  DeleteTranslationRequest,
+  GetTranslationLocationRequest,
+  GetTranslationRequest,
+  ListTranslationsRequest,
+  ListTranslationsResponse,
+  TranslationLocationResource,
+  TranslationResource,
 }
 import application.errors.TranslationServiceError.{
   InvalidTranslation,
@@ -27,7 +27,7 @@ import org.aulune.commons.service.auth.User
 /** Service managing translations.
  *  @tparam F effect type.
  */
-trait AudioPlayTranslationService[F[_]]:
+trait TranslationService[F[_]]:
   /** Get translation by given ID.
    *
    *  Domain error [[TranslationNotFound]] will be returned if translation is
@@ -37,16 +37,16 @@ trait AudioPlayTranslationService[F[_]]:
    *  @return requested translation if found.
    */
   def get(
-      request: GetAudioPlayTranslationRequest,
-  ): F[Either[ErrorResponse, AudioPlayTranslationResource]]
+      request: GetTranslationRequest,
+  ): F[Either[ErrorResponse, TranslationResource]]
 
   /** Get a portion of translations.
    *  @param request request to list audio play translations.
    *  @return list of found translations if success, otherwise error.
    */
   def list(
-      request: ListAudioPlayTranslationsRequest,
-  ): F[Either[ErrorResponse, ListAudioPlayTranslationsResponse]]
+      request: ListTranslationsRequest,
+  ): F[Either[ErrorResponse, ListTranslationsResponse]]
 
   /** Creates new translation.
    *
@@ -63,8 +63,8 @@ trait AudioPlayTranslationService[F[_]]:
    */
   def create(
       user: User,
-      request: CreateAudioPlayTranslationRequest,
-  ): F[Either[ErrorResponse, AudioPlayTranslationResource]]
+      request: CreateTranslationRequest,
+  ): F[Either[ErrorResponse, TranslationResource]]
 
   /** Deletes existing translation.
    *  @param user user who performs this action.
@@ -74,7 +74,7 @@ trait AudioPlayTranslationService[F[_]]:
    */
   def delete(
       user: User,
-      request: DeleteAudioPlayTranslationRequest,
+      request: DeleteTranslationRequest,
   ): F[Either[ErrorResponse, Unit]]
 
   /** Gets translation self-hosted location.
@@ -91,5 +91,5 @@ trait AudioPlayTranslationService[F[_]]:
    */
   def getLocation(
       user: User,
-      request: GetAudioPlayTranslationLocationRequest,
-  ): F[Either[ErrorResponse, AudioPlayTranslationLocationResource]]
+      request: GetTranslationLocationRequest,
+  ): F[Either[ErrorResponse, TranslationLocationResource]]
