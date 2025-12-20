@@ -39,14 +39,14 @@ object ReleaseDate:
 
   /** Tells how accurate given date is. */
   enum DateAccuracy:
-    /** Date is fully accurate. */
-    case Full
+    /** Date is unknown. */
+    case Unknown
 
-    /** Year and all below can be inaccurate. */
-    case Year
+    /** Everything up to day is correct. */
+    case Day
 
-    /** Month and all below can be inaccurate. */
+    /** Everything up to month is correct. */
     case Month
 
-    /** Day and all below can be inaccurate. */
-    case Day
+    /** Everything up to year is correct. */
+    case Year

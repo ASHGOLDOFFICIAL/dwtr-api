@@ -40,7 +40,7 @@ object WorkExamples:
     "enemies indeed..."
   private val releaseDateExample = ReleaseDateDTO(
     date = LocalDate.of(2017, 2, 28),
-    accuracy = DateAccuracyDTO.Full,
+    accuracy = DateAccuracyDTO.Day,
   )
 
   private val writersExample = List(PersonExamples.DavidLlewellynResource)

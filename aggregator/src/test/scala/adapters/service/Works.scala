@@ -27,7 +27,7 @@ import domain.model.shared.ExternalResourceType.{
   Streaming,
 }
 import domain.model.shared.ReleaseDate.DateAccuracy
-import domain.model.shared.ReleaseDate.DateAccuracy.{Day, Full, Year}
+import domain.model.shared.ReleaseDate.DateAccuracy.{Day, Year}
 import domain.model.shared.{
   ExternalResource,
   ImageUri,
@@ -85,7 +85,7 @@ private[aggregator] object Works:
         main = false,
       ),
     ),
-    releaseDate = makeReleaseDate(2000, 10, 10, Full),
+    releaseDate = makeReleaseDate(2000, 10, 10, Day),
     seriesId = WorkSeriesStubs.series1.id.some,
     seriesSeason = SeasonNumber.unsafe(1).some,
     seriesNumber = SeriesNumber.unsafe(1).some,
