@@ -5,7 +5,7 @@ package adapters.service
 import adapters.service.mappers.{
   AudioPlayMapper,
   EpisodeTypeMapper,
-  ReleaseDateMapper
+  ReleaseDateMapper,
 }
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
 import application.AudioPlayService

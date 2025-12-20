@@ -6,7 +6,7 @@ import adapters.service.mappers.{
   AudioPlayTranslationMapper,
   AudioPlayTranslationTypeMapper,
   ExternalResourceMapper,
-  LanguageMapper
+  LanguageMapper,
 }
 import application.AggregatorPermission.Modify
 import application.AudioPlayTranslationService
