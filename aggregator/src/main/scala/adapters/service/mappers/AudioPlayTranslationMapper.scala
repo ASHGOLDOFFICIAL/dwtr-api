@@ -4,7 +4,7 @@ package adapters.service.mappers
 
 import application.dto.translation.{
   CreateTranslationRequest,
-  TranslationResource
+  TranslationResource,
 }
 import domain.errors.TranslationValidationError
 import domain.model.audioplay.AudioPlay
