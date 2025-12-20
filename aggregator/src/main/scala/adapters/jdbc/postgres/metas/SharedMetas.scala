@@ -40,10 +40,10 @@ private[postgres] object SharedMetas:
 
   given dateAccuracyMeta: Meta[DateAccuracy] =
     val toInt = DateAccuracy.values.map {
-      case t @ DateAccuracy.Full  => t -> 1
-      case t @ DateAccuracy.Year  => t -> 2
-      case t @ DateAccuracy.Month => t -> 3
-      case t @ DateAccuracy.Day   => t -> 4
+      case t @ DateAccuracy.Unknown => t -> 0
+      case t @ DateAccuracy.Day     => t -> 1
+      case t @ DateAccuracy.Month   => t -> 2
+      case t @ DateAccuracy.Year    => t -> 3
     }.toMap
     val fromInt = toInt.map(_.swap)
     Meta[Int].imap(fromInt)(toInt)

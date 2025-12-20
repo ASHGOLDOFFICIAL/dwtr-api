@@ -9,10 +9,10 @@ import application.dto.shared.ReleaseDateDTO.DateAccuracyDTO
  */
 private[api] object DateAccuracyMapper:
   private val fromDtoMapper = DateAccuracyDTO.values.map {
-    case t @ DateAccuracyDTO.Full  => t -> "full"
-    case t @ DateAccuracyDTO.Year  => t -> "year"
-    case t @ DateAccuracyDTO.Month => t -> "month"
-    case t @ DateAccuracyDTO.Day   => t -> "day"
+    case t @ DateAccuracyDTO.Unknown => t -> "unknown"
+    case t @ DateAccuracyDTO.Day     => t -> "day"
+    case t @ DateAccuracyDTO.Month   => t -> "month"
+    case t @ DateAccuracyDTO.Year    => t -> "year"
   }.toMap
 
   private val fromStringMapper = fromDtoMapper.map(_.swap)

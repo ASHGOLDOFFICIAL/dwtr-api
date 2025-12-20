@@ -14,7 +14,7 @@ import domain.model.shared.ReleaseDate.DateAccuracy
  */
 private[service] object ReleaseDateMapper:
   private val mapToDomain = Map(
-    DateAccuracyDTO.Full -> DateAccuracy.Full,
+    DateAccuracyDTO.Unknown -> DateAccuracy.Unknown,
     DateAccuracyDTO.Year -> DateAccuracy.Year,
     DateAccuracyDTO.Month -> DateAccuracy.Month,
     DateAccuracyDTO.Day -> DateAccuracy.Day,
