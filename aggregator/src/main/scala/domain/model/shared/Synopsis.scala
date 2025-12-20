@@ -1,7 +1,7 @@
 package org.aulune.aggregator
 package domain.model.shared
 
-/** Synopsis for audio plays, comics, etc. */
+/** Synopsis for pieces of media. */
 opaque type Synopsis <: String = String
 
 

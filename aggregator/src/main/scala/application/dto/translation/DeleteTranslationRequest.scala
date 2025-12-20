@@ -4,7 +4,7 @@ package application.dto.translation
 import java.util.UUID
 
 
-/** Request to delete an audio play translation. */
+/** Request to delete a translation. */
 final case class DeleteTranslationRequest(
     name: UUID,
 )

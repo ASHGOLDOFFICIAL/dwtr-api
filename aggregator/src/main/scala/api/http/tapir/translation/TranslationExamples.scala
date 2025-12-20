@@ -2,7 +2,7 @@ package org.aulune.aggregator
 package api.http.tapir.translation
 
 
-import api.http.tapir.audioplay.AudioPlayExamples
+import api.http.tapir.work.WorkExamples
 import application.dto.shared.ExternalResourceDTO
 import application.dto.shared.ExternalResourceTypeDTO.Download
 import application.dto.shared.LanguageDTO.Russian
@@ -37,7 +37,7 @@ object TranslationExamples:
     Some(Base64.getEncoder.encodeToString(titleExample.getBytes))
 
   val CreateRequest: CreateTranslationRequest = CreateTranslationRequest(
-    originalId = AudioPlayExamples.Resource.id,
+    originalId = WorkExamples.Resource.id,
     title = titleExample,
     translationType = translationTypeExample,
     language = languageExample,
@@ -46,7 +46,7 @@ object TranslationExamples:
   )
 
   val Resource: TranslationResource = TranslationResource(
-    originalId = AudioPlayExamples.Resource.id,
+    originalId = WorkExamples.Resource.id,
     id = UUID.fromString("8f7c586f-7043-4e47-9021-45e41a9e6f9c"),
     title = titleExample,
     translationType = translationTypeExample,

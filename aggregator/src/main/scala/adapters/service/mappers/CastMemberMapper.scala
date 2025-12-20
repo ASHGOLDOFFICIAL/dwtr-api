@@ -2,10 +2,10 @@ package org.aulune.aggregator
 package adapters.service.mappers
 
 
-import application.dto.audioplay.AudioPlayResource.CastMemberResource
-import application.dto.audioplay.CastMemberDTO
+import application.dto.work.WorkResource.CastMemberResource
+import application.dto.work.CastMemberDTO
 import application.dto.person.PersonResource
-import domain.model.audioplay.{ActorRole, CastMember}
+import domain.model.work.{ActorRole, CastMember}
 import domain.model.person.Person
 
 import cats.syntax.all.given

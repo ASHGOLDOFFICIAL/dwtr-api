@@ -66,7 +66,7 @@ trait PersonService[F[_]]:
       request: SearchPersonsRequest,
   ): F[Either[ErrorResponse, SearchPersonsResponse]]
 
-  /** Create new audio play.
+  /** Create new person.
    *
    *  Domain error [[InvalidPerson]] will be returned if request contains
    *  invalid person.

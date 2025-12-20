@@ -2,9 +2,9 @@ package org.aulune.aggregator
 package adapters.service.mappers
 
 
-import application.dto.audioplay.EpisodeTypeDTO
+import application.dto.work.EpisodeTypeDTO
 import application.dto.shared.{ExternalResourceDTO, ExternalResourceTypeDTO}
-import domain.model.audioplay.EpisodeType
+import domain.model.work.EpisodeType
 import domain.model.shared.{ExternalResource, ExternalResourceType}
 
 

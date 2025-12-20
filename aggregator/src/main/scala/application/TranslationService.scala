@@ -41,7 +41,7 @@ trait TranslationService[F[_]]:
   ): F[Either[ErrorResponse, TranslationResource]]
 
   /** Get a portion of translations.
-   *  @param request request to list audio play translations.
+   *  @param request request to list translations.
    *  @return list of found translations if success, otherwise error.
    */
   def list(
@@ -51,8 +51,7 @@ trait TranslationService[F[_]]:
   /** Creates new translation.
    *
    *  Domain errors:
-   *    - [[OriginalNotFound]] will be returned when original audio play is not
-   *      found.
+   *    - [[OriginalNotFound]] will be returned when original work is not found.
    *    - [[InvalidTranslation]] will be returned when trying to create invalid
    *      translation.
    *

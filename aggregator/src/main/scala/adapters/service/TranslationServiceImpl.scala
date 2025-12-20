@@ -3,10 +3,9 @@ package adapters.service
 
 
 import adapters.service.TranslationServiceImpl.Cursor
-import adapters.service.errors.AudioPlayTranslationServiceErrorResponses as ErrorResponses
-import adapters.service.mappers.AudioPlayTranslationMapper
+import adapters.service.errors.TranslationServiceErrorResponses as ErrorResponses
+import adapters.service.mappers.TranslationMapper
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
-import application.dto.audioplay.GetAudioPlayRequest
 import application.dto.translation.{
   CreateTranslationRequest,
   DeleteTranslationRequest,
@@ -17,10 +16,11 @@ import application.dto.translation.{
   TranslationLocationResource,
   TranslationResource,
 }
-import application.errors.AudioPlayServiceError.AudioPlayNotFound
-import application.{AggregatorPermission, AudioPlayService, TranslationService}
-import domain.model.audioplay.AudioPlay
+import application.dto.work.GetWorkRequest
+import application.errors.WorkServiceError.WorkNotFound
+import application.{AggregatorPermission, TranslationService, WorkService}
 import domain.model.translation.{Translation, TranslationField}
+import domain.model.work.Work
 import domain.repositories.TranslationRepository
 
 import cats.MonadThrow
@@ -45,10 +45,11 @@ import org.typelevel.log4cats.{Logger, LoggerFactory}
 /** [[TranslationService]] implementation. */
 object TranslationServiceImpl:
   /** Builds a service.
+   *
    *  @param pagination pagination config.
    *  @param repo translation repository.
-   *  @param audioPlayService [[AudioPlayService]] implementation to check
-   *    original existence.
+   *  @param audioPlayService [[WorkService]] implementation to check original
+   *    existence.
    *  @param permissionService [[PermissionClientService]] implementation to
    *    perform permission checks.
    *  @tparam F effect type.
@@ -57,7 +58,7 @@ object TranslationServiceImpl:
   def build[F[_]: MonadThrow: SortableUUIDGen: LoggerFactory](
       pagination: AggregatorConfig.PaginationParams,
       repo: TranslationRepository[F],
-      audioPlayService: AudioPlayService[F],
+      audioPlayService: WorkService[F],
       permissionService: PermissionClientService[F],
   ): F[TranslationService[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
@@ -100,7 +101,7 @@ private final class TranslationServiceImpl[F[
     paginationParser: PaginationParamsParser[Cursor],
     filterParser: FilterParser[TranslationField],
     repo: TranslationRepository[F],
-    audioPlayService: AudioPlayService[F],
+    workService: WorkService[F],
     permissionService: PermissionClientService[F],
 ) extends TranslationService[F]:
 
@@ -116,7 +117,7 @@ private final class TranslationServiceImpl[F[
       elem <- EitherT
         .fromOptionF(repo.get(uuid), ErrorResponses.translationNotFound)
         .leftSemiflatTap(_ => warn"Couldn't find element with ID: $request")
-      response = AudioPlayTranslationMapper.makeResource(elem)
+      response = TranslationMapper.makeResource(elem)
     yield response).value.handleErrorWith(handleInternal)
 
   override def list(
@@ -143,7 +144,7 @@ private final class TranslationServiceImpl[F[
         .map(e => CursorEncoder[Cursor].encode(Cursor(e.id, request.filter)))
         .filter(_ => elems.size == params.pageSize)
       response = ListTranslationsResponse(
-        elems.map(AudioPlayTranslationMapper.makeResource),
+        elems.map(TranslationMapper.makeResource),
         nextPageToken)
     yield response).value.handleErrorWith(handleInternal)
 
@@ -153,19 +154,19 @@ private final class TranslationServiceImpl[F[
   ): F[Either[ErrorResponse, TranslationResource]] =
     requirePermissionOrDeny(Modify, user) {
       val uuid = SortableUUIDGen.randomTypedUUID[F, Translation]
-      val originalId = Uuid[AudioPlay](request.originalId)
+      val originalId = Uuid[Work](request.originalId)
       (for
         _ <- eitherTLogger.info(s"Create request $request from $user.")
-        audioPlayRequest = GetAudioPlayRequest(name = originalId)
-        original <- EitherT(audioPlayService.get(audioPlayRequest))
-          .leftMap(handleAudioPlayNotFound)
+        audioPlayRequest = GetWorkRequest(name = originalId)
+        original <- EitherT(workService.get(audioPlayRequest))
+          .leftMap(handleWorkNotFound)
           .leftSemiflatTap(_ => warn"Original was not found: $request")
         id <- EitherT.liftF(uuid)
         translation <- EitherT
-          .fromEither(makeAudioPlayTranslation(request, id))
+          .fromEither(makeTranslation(request, id))
           .leftSemiflatTap(_ => warn"Request to create bad element: $request.")
         persisted <- EitherT.liftF(repo.persist(translation))
-        response = AudioPlayTranslationMapper.makeResource(persisted)
+        response = TranslationMapper.makeResource(persisted)
       yield response).value
     }.handleErrorWith(handleInternal)
 
@@ -194,27 +195,27 @@ private final class TranslationServiceImpl[F[
       yield response).value.handleErrorWith(handleInternal)
     }
 
-  /** Converts [[AudioPlayNotFound]] response to original not found. Other
-   *  responses are left as is.
+  /** Converts [[WorkNotFound]] response to original not found. Other responses
+   *  are left as is.
+   *
    *  @param err error response.
    */
-  private def handleAudioPlayNotFound(err: ErrorResponse) =
-    err.details.info match
-      case Some(info) if info.reason == AudioPlayNotFound =>
-        ErrorResponses.originalNotFound
-      case _ => err
+  private def handleWorkNotFound(err: ErrorResponse) = err.details.info match
+    case Some(info) if info.reason == WorkNotFound =>
+      ErrorResponses.originalNotFound
+    case _ => err
 
   /** Makes translation from given creation request and assigned ID.
    *  @param request creation request.
    *  @param id ID assigned to this translation.
    *  @note It's only purpose is to improve readability of [[create]] method.
    */
-  private def makeAudioPlayTranslation(
+  private def makeTranslation(
       request: CreateTranslationRequest,
       id: Uuid[Translation],
-  ) = AudioPlayTranslationMapper
+  ) = TranslationMapper
     .fromRequest(request, id)
-    .leftMap(ErrorResponses.invalidAudioPlayTranslation)
+    .leftMap(ErrorResponses.invalidTranslation)
     .toEither
 
   /** Logs any error and returns internal error response. */

@@ -20,7 +20,7 @@ import application.dto.person.{
 }
 import application.{AggregatorPermission, PersonService}
 import domain.errors.PersonValidationError
-import domain.model.person.{Person, PersonFilterField}
+import domain.model.person.{Person, PersonField}
 import domain.repositories.PersonRepository
 
 import cats.MonadThrow
@@ -95,8 +95,8 @@ object PersonServiceImpl:
       derives CursorEncoder,
         CursorDecoder:
     /** Converts cursor to filter AST. */
-    def toFilter: Filter[PersonFilterField] =
-      Condition(PersonFilterField.Id, GreaterThan, Literal(id.toString))
+    def toFilter: Filter[PersonField] =
+      Condition(PersonField.Id, GreaterThan, Literal(id.toString))
 
 end PersonServiceImpl
 
