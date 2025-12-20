@@ -11,7 +11,6 @@ import domain.errors.TranslationValidationError
 import domain.model.audioplay.AudioPlay
 import domain.model.audioplay.translation.AudioPlayTranslation
 import domain.model.shared.{SelfHostedLocation, TranslatedTitle}
-import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCursor
 
 import cats.data.{NonEmptyList, ValidatedNec}
 import cats.syntax.all.given
@@ -64,16 +63,3 @@ private[service] object AudioPlayTranslationMapper:
       externalResources = domain.externalResources
         .map(ExternalResourceMapper.fromDomain),
     )
-
-  /** Converts list of domain objects to one list response.
-   *  @param translations list of domain objects.
-   */
-  def toListResponse(
-      translations: List[AudioPlayTranslation],
-  ): ListAudioPlayTranslationsResponse =
-    val nextPageToken = translations.lastOption.map { elem =>
-      val cursor = AudioPlayTranslationCursor(elem.id)
-      CursorEncoder[AudioPlayTranslationCursor].encode(cursor)
-    }
-    val elements = translations.map(makeResource)
-    ListAudioPlayTranslationsResponse(elements, nextPageToken)

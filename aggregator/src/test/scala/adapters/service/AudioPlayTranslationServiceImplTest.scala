@@ -23,16 +23,20 @@ import application.errors.TranslationServiceError.{
   OriginalNotFound,
   TranslationNotFound,
 }
-import domain.model.audioplay.translation.AudioPlayTranslation
+import domain.model.audioplay.translation.{
+  AudioPlayTranslation,
+  AudioPlayTranslationFilterField,
+}
 import domain.model.shared.TranslatedTitle
 import domain.repositories.AudioPlayTranslationRepository
-import domain.repositories.AudioPlayTranslationRepository.AudioPlayTranslationCursor
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.errors.ErrorStatus.PermissionDenied
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.{
   Permission,
@@ -149,7 +153,7 @@ final class AudioPlayTranslationServiceImplTest
           filter = None,
         )
         val _ = (mockRepo.list _)
-          .expects(1, None, None)
+          .expects(1, None)
           .returning(List(translation).pure)
 
         for result <- service.list(request)
@@ -166,13 +170,15 @@ final class AudioPlayTranslationServiceImplTest
           filter = None,
         )
 
-        val cursor =
-          AudioPlayTranslationCursor(AudioPlayTranslations.translation1.id).some
         val _ = (mockRepo.list _)
-          .expects(1, None, None)
+          .expects(1, None)
           .returning(List(AudioPlayTranslations.translation1).pure)
+        val filter = Condition(
+          AudioPlayTranslationFilterField.Id,
+          GreaterThan,
+          Literal(AudioPlayTranslations.translation1.id.toString))
         val _ = (mockRepo.list _)
-          .expects(1, cursor, None)
+          .expects(1, Some(filter))
           .returning(List(AudioPlayTranslations.translation2).pure)
 
         val response = AudioPlayTranslationMapper.makeResource(

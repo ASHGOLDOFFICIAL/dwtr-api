@@ -2,6 +2,7 @@ package org.aulune.aggregator
 package adapters.service
 
 
+import adapters.service.PersonServiceImpl.Cursor
 import adapters.service.errors.PersonServiceErrorResponses as ErrorResponses
 import adapters.service.mappers.PersonMapper
 import application.AggregatorPermission.Modify
@@ -19,14 +20,17 @@ import application.dto.person.{
 }
 import application.{AggregatorPermission, PersonService}
 import domain.errors.PersonValidationError
-import domain.model.person.Person
+import domain.model.person.{Person, PersonFilterField}
 import domain.repositories.PersonRepository
 
 import cats.MonadThrow
 import cats.data.{EitherT, NonEmptyList}
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
-import org.aulune.commons.pagination.cursor.CursorEncoder
+import org.aulune.commons.filter.Filter
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
+import org.aulune.commons.pagination.cursor.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.search.SearchParamsParser
 import org.aulune.commons.service.auth.User
@@ -60,7 +64,7 @@ object PersonServiceImpl:
   ): F[PersonService[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
     val paginationParserO = PaginationParamsParser
-      .build[PersonRepository.Cursor](pagination.default, pagination.max)
+      .build[Cursor](pagination.default, pagination.max)
     val searchParserO = SearchParamsParser
       .build(search.default, search.max)
 
@@ -84,12 +88,24 @@ object PersonServiceImpl:
       repo,
       permissionService)
 
+  /** Cursor to resume pagination.
+   *  @param id identity of last entry.
+   */
+  private final case class Cursor(id: Uuid[Person])
+      derives CursorEncoder,
+        CursorDecoder:
+    /** Converts cursor to filter AST. */
+    def toFilter: Filter[PersonFilterField] =
+      Condition(PersonFilterField.Id, GreaterThan, Literal(id.toString))
+
+end PersonServiceImpl
+
 
 private final class PersonServiceImpl[
     F[_]: MonadThrow: SortableUUIDGen: LoggerFactory,
 ] private (
     maxBatchGet: Int,
-    paginationParser: PaginationParamsParser[PersonRepository.Cursor],
+    paginationParser: PaginationParamsParser[Cursor],
     searchParser: SearchParamsParser,
     repo: PersonRepository[F],
     permissionService: PermissionClientService[F],
@@ -128,9 +144,13 @@ private final class PersonServiceImpl[
       params <- EitherT
         .fromOption(paramsV.toOption, ErrorResponses.invalidPaginationParams)
         .leftSemiflatTap(_ => warn"Invalid pagination params are given.")
-      elems <- EitherT.liftF(repo.list(params.cursor, params.pageSize))
+      elems <- EitherT
+        .liftF(repo.list(params.pageSize, params.cursor.map(_.toFilter)))
       resources = elems.map(PersonMapper.makeResource)
-      token = makePaginationToken(elems.lastOption)
+
+      token = elems.lastOption
+        .map(elem => CursorEncoder[Cursor].encode(Cursor(elem.id)))
+        .filter(_ => elems.size == params.pageSize)
       response = ListPersonsResponse(resources, token)
     yield response).value.handleErrorWith(handleInternal)
 
@@ -215,16 +235,6 @@ private final class PersonServiceImpl[
       .fromCreateRequest(request, id)
       .leftMap(ErrorResponses.invalidPerson)
       .toEither
-
-  /** Converts list of domain objects to one list response.
-   *  @param last last sent element.
-   */
-  private def makePaginationToken(
-      last: Option[Person],
-  ): Option[String] = last.map { elem =>
-    val cursor = PersonRepository.Cursor(elem.id)
-    CursorEncoder[PersonRepository.Cursor].encode(cursor)
-  }
 
   /** Logs any error and returns internal error response. */
   private def handleInternal[A](e: Throwable) =

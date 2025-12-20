@@ -2,6 +2,7 @@ package org.aulune.aggregator
 package adapters.service
 
 
+import adapters.service.AudioPlaySeriesServiceImpl.Cursor
 import adapters.service.errors.AudioPlaySeriesServiceErrorResponses as ErrorResponses
 import adapters.service.mappers.AudioPlaySeriesMapper
 import application.AggregatorPermission.Modify
@@ -18,13 +19,21 @@ import application.dto.audioplay.series.{
   SearchAudioPlaySeriesResponse,
 }
 import application.{AggregatorPermission, AudioPlaySeriesService}
-import domain.model.audioplay.series.AudioPlaySeries
+import domain.model.audioplay.AudioPlayFilterField
+import domain.model.audioplay.series.{
+  AudioPlaySeries,
+  AudioPlaySeriesFilterField,
+}
 import domain.repositories.AudioPlaySeriesRepository
 
 import cats.MonadThrow
 import cats.data.{EitherT, NonEmptyList}
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
+import org.aulune.commons.filter.Filter
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
+import org.aulune.commons.pagination.cursor.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.search.SearchParamsParser
 import org.aulune.commons.service.auth.User
@@ -58,9 +67,7 @@ object AudioPlaySeriesServiceImpl:
   ): F[AudioPlaySeriesService[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
     val paginationParserO = PaginationParamsParser
-      .build[AudioPlaySeriesRepository.Cursor](
-        pagination.default,
-        pagination.max)
+      .build[Cursor](pagination.default, pagination.max)
     val searchParserO = SearchParamsParser
       .build(search.default, search.max)
 
@@ -85,14 +92,26 @@ object AudioPlaySeriesServiceImpl:
       permissionService,
     )
 
+  /** Cursor to resume pagination.
+   *  @param id identity of last entry.
+   */
+  private final case class Cursor(id: Uuid[AudioPlaySeries])
+      derives CursorEncoder,
+        CursorDecoder:
+    /** Converts cursor to filter AST. */
+    def toFilter: Filter[AudioPlaySeriesFilterField] = Condition(
+      AudioPlaySeriesFilterField.Id,
+      GreaterThan,
+      Literal(id.toString))
+
 end AudioPlaySeriesServiceImpl
 
 
 private final class AudioPlaySeriesServiceImpl[F[
     _,
-]: MonadThrow: SortableUUIDGen: LoggerFactory](
+]: MonadThrow: SortableUUIDGen: LoggerFactory] private (
     maxBatchGet: Int,
-    paginationParser: PaginationParamsParser[AudioPlaySeriesRepository.Cursor],
+    paginationParser: PaginationParamsParser[Cursor],
     searchParser: SearchParamsParser,
     repo: AudioPlaySeriesRepository[F],
     permissionService: PermissionClientService[F],
@@ -131,9 +150,15 @@ private final class AudioPlaySeriesServiceImpl[F[
       params <- EitherT
         .fromOption(paramsV.toOption, ErrorResponses.invalidPaginationParams)
         .leftSemiflatTap(_ => warn"Invalid pagination params are given.")
-      listResult = repo.list(params.cursor, params.pageSize)
-      elems <- EitherT.liftF(listResult)
-      response = AudioPlaySeriesMapper.toListResponse(elems)
+      elems <-
+        EitherT.liftF(repo.list(params.pageSize, params.cursor.map(_.toFilter)))
+
+      nextPageToken = elems.lastOption
+        .map(elem => CursorEncoder[Cursor].encode(Cursor(elem.id)))
+        .filter(_ => elems.size == params.pageSize)
+      response = ListAudioPlaySeriesResponse(
+        elems.map(AudioPlaySeriesMapper.toResponse),
+        nextPageToken)
     yield response).value.handleErrorWith(handleInternal)
 
   override def search(

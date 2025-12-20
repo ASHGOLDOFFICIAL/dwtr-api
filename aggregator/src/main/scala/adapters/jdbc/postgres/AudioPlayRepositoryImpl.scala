@@ -14,6 +14,7 @@ import domain.model.audioplay.{
   AudioPlayTitle,
   CastMember,
   EpisodeType,
+  AudioPlayFilterField as FilterField,
 }
 import domain.model.person.Person
 import domain.model.shared.ReleaseDate.DateAccuracy
@@ -25,14 +26,13 @@ import domain.model.shared.{
   Synopsis,
 }
 import domain.repositories.AudioPlayRepository
-import domain.repositories.AudioPlayRepository.AudioPlayCursor
 
 import cats.MonadThrow
 import cats.effect.MonadCancelThrow
 import cats.syntax.all.given
-import doobie.Transactor
 import doobie.postgres.implicits.JavaLocalDateMeta
 import doobie.syntax.all.given
+import doobie.{Fragment, Transactor}
 import org.aulune.commons.adapters.doobie.postgres.ErrorUtils.{
   checkIfPositive,
   checkIfUpdated,
@@ -43,6 +43,10 @@ import org.aulune.commons.adapters.doobie.postgres.Metas.{
   nonEmptyStringMeta,
   uuidMeta,
 }
+import org.aulune.commons.adapters.doobie.queries.ListQueryMaker
+import org.aulune.commons.filter.Filter
+import org.aulune.commons.filter.instances.DoobieFragmentFilterEvaluator
+import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 
 import java.time.LocalDate
@@ -167,21 +171,18 @@ private final class AudioPlayRepositoryImpl[F[_]: MonadCancelThrow](
       .handleErrorWith(toInternalError)
 
   override def list(
-      cursor: Option[AudioPlayCursor],
       count: Int,
-  ): F[List[AudioPlay]] =
-    val sort = fr0"LIMIT $count"
-    val full = cursor match
-      case Some(t) => selectBase ++ fr"WHERE ap.id > ${t.id}" ++ sort
-      case None    => selectBase ++ sort
-
-    checkIfPositive(count) >> full.stripMargin
+      filter: Option[Filter[FilterField]],
+  ): F[List[AudioPlay]] = (for
+    _ <- checkIfPositive(count)
+    query <- MonadThrow[F].fromEither(listQueryMaker.make(count, filter))
+    result <- query.stripMargin
       .query[SelectResult]
       .map(toAudioPlay)
       .to[List]
       .transact(transactor)
-      .handleErrorWith(toInternalError)
-  end list
+  yield result)
+    .handleErrorWith(toInternalError)
 
   override def search(query: NonEmptyString, limit: Int): F[List[AudioPlay]] =
     checkIfPositive(limit) >> (selectBase ++ fr0"""
@@ -261,3 +262,7 @@ private final class AudioPlayRepositoryImpl[F[_]: MonadCancelThrow](
     selfHostedLocation = selfHostLocation,
     externalResources = resources,
   )
+
+  private val listQueryMaker = ListQueryMaker[FilterField](selectBase) {
+    case FilterField.Id => NonEmptyString("id::text")
+  }

@@ -2,6 +2,7 @@ package org.aulune.aggregator
 package adapters.service
 
 
+import adapters.service.AudioPlayTranslationServiceImpl.Cursor
 import adapters.service.errors.AudioPlayTranslationServiceErrorResponses as ErrorResponses
 import adapters.service.mappers.AudioPlayTranslationMapper
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
@@ -28,22 +29,21 @@ import domain.model.audioplay.translation.{
   AudioPlayTranslationFilterField,
 }
 import domain.repositories.AudioPlayTranslationRepository
-import domain.repositories.AudioPlayTranslationRepository.{
-  AudioPlayTranslationCursor,
-  given,
-}
 
 import cats.MonadThrow
 import cats.data.EitherT
 import cats.syntax.all.given
 import org.aulune.commons.errors.ErrorResponse
-import org.aulune.commons.filter.FilterParser
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
+import org.aulune.commons.filter.{Filter, FilterParser}
+import org.aulune.commons.pagination.cursor.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.PermissionClientService
 import org.aulune.commons.service.permission.PermissionClientService.requirePermissionOrDeny
 import org.aulune.commons.typeclasses.SortableUUIDGen
-import org.aulune.commons.types.Uuid
+import org.aulune.commons.types.{NonEmptyString, Uuid}
 import org.typelevel.log4cats.Logger.eitherTLogger
 import org.typelevel.log4cats.syntax.LoggerInterpolator
 import org.typelevel.log4cats.{Logger, LoggerFactory}
@@ -70,7 +70,7 @@ object AudioPlayTranslationServiceImpl:
     given Logger[F] = LoggerFactory[F].getLogger
     val filterParser = FilterParser.make[AudioPlayTranslationFilterField]
     val maybeParser = PaginationParamsParser
-      .build[AudioPlayTranslationCursor](pagination.default, pagination.max)
+      .build[Cursor](pagination.default, pagination.max)
 
     for
       _ <- info"Building service."
@@ -85,13 +85,28 @@ object AudioPlayTranslationServiceImpl:
       audioPlayService,
       permissionService)
 
+  /** Cursor to resume pagination of translations.
+   *  @param id ID of this translation.
+   *  @param filter previously used filter expression.
+   */
+  private final case class Cursor(
+      id: Uuid[AudioPlayTranslation],
+      filter: Option[NonEmptyString],
+  ) derives CursorEncoder,
+        CursorDecoder:
+    /** Converts cursor to filter AST. */
+    def toFilter: Filter[AudioPlayTranslationFilterField] = Condition(
+      AudioPlayTranslationFilterField.Id,
+      GreaterThan,
+      Literal(id.toString))
+
 end AudioPlayTranslationServiceImpl
 
 
 private final class AudioPlayTranslationServiceImpl[F[
     _,
-]: MonadThrow: SortableUUIDGen: LoggerFactory](
-    paginationParser: PaginationParamsParser[AudioPlayTranslationCursor],
+]: MonadThrow: SortableUUIDGen: LoggerFactory] private (
+    paginationParser: PaginationParamsParser[Cursor],
     filterParser: FilterParser[AudioPlayTranslationFilterField],
     repo: AudioPlayTranslationRepository[F],
     audioPlayService: AudioPlayService[F],
@@ -119,15 +134,26 @@ private final class AudioPlayTranslationServiceImpl[F[
     val paramsV = paginationParser.parse(request.pageSize, request.pageToken)
     (for
       _ <- eitherTLogger.info(s"List request: $request.")
+
       params <- EitherT
         .fromOption(paramsV.toOption, ErrorResponses.invalidPaginationParams)
-        .leftSemiflatTap(_ => warn"Invalid pagination params are given.")
-      filter <- request.filter
-        .traverse(filter => EitherT.fromEither(filterParser.parse(filter)))
+        .ensure(ErrorResponses.invalidFilter) { p =>
+          p.cursor.fold(true)(_.filter == request.filter)
+        }
+      requestFilter <- request.filter
+        .traverse(s => EitherT.fromEither(filterParser.parse(s)))
         .leftMap(_ => ErrorResponses.invalidFilter)
-      listResult = repo.list(params.pageSize, params.cursor, filter)
-      elems <- EitherT.liftF(listResult)
-      response = AudioPlayTranslationMapper.toListResponse(elems)
+
+      filter = List(params.cursor.map(_.toFilter), requestFilter).flatten
+        .reduceOption(_ and _)
+      elems <- EitherT.liftF(repo.list(params.pageSize, filter))
+
+      nextPageToken = elems.lastOption
+        .map(e => CursorEncoder[Cursor].encode(Cursor(e.id, request.filter)))
+        .filter(_ => elems.size == params.pageSize)
+      response = ListAudioPlayTranslationsResponse(
+        elems.map(AudioPlayTranslationMapper.makeResource),
+        nextPageToken)
     yield response).value.handleErrorWith(handleInternal)
 
   override def create(

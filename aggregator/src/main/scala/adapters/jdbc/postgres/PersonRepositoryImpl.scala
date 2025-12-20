@@ -5,7 +5,8 @@ package adapters.jdbc.postgres
 import adapters.jdbc.postgres.PersonRepositoryImpl.handleConstraintViolation
 import adapters.jdbc.postgres.metas.PersonMetas.given
 import domain.errors.PersonConstraint
-import domain.model.person.{FullName, Person}
+import domain.model.person.PersonFilterField as FilterField
+import domain.model.person.{FullName, Person, PersonFilterField}
 import domain.repositories.PersonRepository
 
 import cats.MonadThrow
@@ -26,6 +27,8 @@ import org.aulune.commons.adapters.doobie.postgres.Metas.{
   uuidMeta,
   uuidsMeta,
 }
+import org.aulune.commons.adapters.doobie.queries.ListQueryMaker
+import org.aulune.commons.filter.Filter
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 
 
@@ -120,21 +123,19 @@ private final class PersonRepositoryImpl[F[_]: MonadCancelThrow](
       .handleErrorWith(toInternalError)
 
   override def list(
-      cursor: Option[PersonRepository.Cursor],
       count: Int,
+      filter: Option[Filter[PersonFilterField]],
   ): F[List[Person]] =
-    val sort = fr0"LIMIT $count"
-    val full = cursor match
-      case Some(t) => selectBase ++ fr"WHERE id > ${t.id}" ++ sort
-      case None    => selectBase ++ sort
-
-    checkIfPositive(count) >> full.stripMargin
-      .query[SelectType]
-      .map(toPerson)
-      .to[List]
-      .transact(transactor)
-      .handleErrorWith(toInternalError)
-  end list
+    for
+      _ <- checkIfPositive(count)
+      query <- MonadThrow[F].fromEither(listQueryMaker.make(count, filter))
+      result <- query.stripMargin
+        .query[SelectType]
+        .map(toPerson)
+        .to[List]
+        .transact(transactor)
+        .handleErrorWith(toInternalError)
+    yield result
 
   override def search(query: NonEmptyString, limit: Int): F[List[Person]] =
     checkIfPositive(limit) >> (selectBase ++ fr0"""
@@ -155,3 +156,7 @@ private final class PersonRepositoryImpl[F[_]: MonadCancelThrow](
   /** Makes person from given data. */
   private def toPerson(uuid: Uuid[Person], name: FullName): Person =
     Person.unsafe(id = uuid, name = name)
+
+  private val listQueryMaker = ListQueryMaker[FilterField](selectBase) {
+    case FilterField.Id => NonEmptyString("id::text")
+  }

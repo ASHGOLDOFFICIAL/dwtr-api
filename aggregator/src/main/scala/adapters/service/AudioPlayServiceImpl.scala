@@ -2,7 +2,7 @@ package org.aulune.aggregator
 package adapters.service
 
 
-import adapters.service.AudioPlayServiceImpl.{PngExtension, PngMimeType}
+import adapters.service.AudioPlayServiceImpl.{Cursor, PngExtension, PngMimeType}
 import adapters.service.errors.AudioPlayServiceErrorResponses as ErrorResponses
 import adapters.service.mappers.AudioPlayMapper
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
@@ -33,10 +33,9 @@ import application.{
   PersonService,
 }
 import domain.errors.{AudioPlayConstraint, AudioPlayValidationError}
-import domain.model.audioplay.AudioPlay
 import domain.model.audioplay.series.AudioPlaySeries
+import domain.model.audioplay.{AudioPlay, AudioPlayFilterField}
 import domain.model.shared.ImageUri
-import domain.repositories.AudioPlayRepository.{AudioPlayCursor, given}
 import domain.repositories.{AudioPlayRepository, CoverImageStorage}
 
 import cats.MonadThrow
@@ -46,7 +45,10 @@ import cats.effect.std.UUIDGen
 import cats.syntax.all.given
 import fs2.Stream
 import org.aulune.commons.errors.{ErrorInfo, ErrorResponse}
-import org.aulune.commons.pagination.cursor.CursorEncoder
+import org.aulune.commons.filter.Filter
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
+import org.aulune.commons.pagination.cursor.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.pagination.params.PaginationParamsParser
 import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.search.SearchParamsParser
@@ -92,7 +94,7 @@ object AudioPlayServiceImpl:
   ): F[AudioPlayService[F]] =
     given Logger[F] = LoggerFactory[F].getLogger
     val paginationParserO = PaginationParamsParser
-      .build[AudioPlayCursor](pagination.default, pagination.max)
+      .build[Cursor](pagination.default, pagination.max)
     val searchParserO = SearchParamsParser
       .build(search.default, search.max)
 
@@ -121,13 +123,23 @@ object AudioPlayServiceImpl:
   private val PngExtension = NonEmptyString("png")
   private val PngMimeType = NonEmptyString("image/png")
 
+  /** Cursor to resume pagination of audio plays.
+   *  @param id identity of [[AudioPlay]].
+   */
+  private final case class Cursor(id: Uuid[AudioPlay])
+      derives CursorEncoder,
+        CursorDecoder:
+    /** Converts cursor to filter AST. */
+    def toFilter: Filter[AudioPlayFilterField] =
+      Condition(AudioPlayFilterField.Id, GreaterThan, Literal(id.toString))
+
 end AudioPlayServiceImpl
 
 
 private final class AudioPlayServiceImpl[F[
     _,
-]: Async: SortableUUIDGen: LoggerFactory](
-    paginationParser: PaginationParamsParser[AudioPlayCursor],
+]: Async: SortableUUIDGen: LoggerFactory] private (
+    paginationParser: PaginationParamsParser[Cursor],
     searchParser: SearchParamsParser,
     imageLimits: AggregatorConfig.ImageLimits,
     repo: AudioPlayRepository[F],
@@ -163,7 +175,8 @@ private final class AudioPlayServiceImpl[F[
       params <- EitherT
         .fromOption(paramsV.toOption, ErrorResponses.invalidPaginationParams)
         .leftSemiflatTap(_ => warn"Invalid pagination params are given.")
-      elems <- EitherT.liftF(repo.list(params.cursor, params.pageSize))
+      elems <-
+        EitherT.liftF(repo.list(params.pageSize, params.cursor.map(_.toFilter)))
       series <- EitherT(batchGetSeries(elems))
       persons <- EitherT(batchGetPersons(elems))
       resources = elems.map { e =>
@@ -386,8 +399,8 @@ private final class AudioPlayServiceImpl[F[
   private def makePaginationToken(
       last: Option[AudioPlay],
   ): Option[String] = last.map { elem =>
-    val cursor = AudioPlayCursor(elem.id)
-    CursorEncoder[AudioPlayCursor].encode(cursor)
+    val cursor = Cursor(elem.id)
+    CursorEncoder[Cursor].encode(cursor)
   }
 
   /** Logs any error and returns internal error response. */

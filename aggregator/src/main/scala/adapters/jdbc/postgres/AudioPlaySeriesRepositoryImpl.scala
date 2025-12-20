@@ -5,7 +5,12 @@ package adapters.jdbc.postgres
 import adapters.jdbc.postgres.AudioPlaySeriesRepositoryImpl.handleConstraintViolation
 import adapters.jdbc.postgres.metas.AudioPlayMetas.given
 import domain.errors.AudioPlaySeriesConstraint
-import domain.model.audioplay.series.{AudioPlaySeries, AudioPlaySeriesName}
+import domain.model.audioplay.series.AudioPlaySeriesFilterField as FilterField
+import domain.model.audioplay.series.{
+  AudioPlaySeries,
+  AudioPlaySeriesFilterField,
+  AudioPlaySeriesName,
+}
 import domain.repositories.AudioPlaySeriesRepository
 
 import cats.MonadThrow
@@ -25,6 +30,8 @@ import org.aulune.commons.adapters.doobie.postgres.Metas.{
   uuidMeta,
   uuidsMeta,
 }
+import org.aulune.commons.adapters.doobie.queries.ListQueryMaker
+import org.aulune.commons.filter.Filter
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 
 
@@ -119,21 +126,19 @@ private final class AudioPlaySeriesRepositoryImpl[F[_]: MonadCancelThrow](
     .handleErrorWith(toInternalError)
 
   override def list(
-      cursor: Option[AudioPlaySeriesRepository.Cursor],
       count: Int,
+      filter: Option[Filter[AudioPlaySeriesFilterField]],
   ): F[List[AudioPlaySeries]] =
-    val sort = fr0"LIMIT $count"
-    val full = cursor match
-      case Some(t) => selectBase ++ fr"WHERE aps.id > ${t.id}" ++ sort
-      case None    => selectBase ++ sort
-
-    checkIfPositive(count) >> full.stripMargin
-      .query[SelectResult]
-      .map(toAudioPlaySeries)
-      .to[List]
-      .transact(transactor)
-      .handleErrorWith(toInternalError)
-  end list
+    for
+      _ <- checkIfPositive(count)
+      query <- MonadThrow[F].fromEither(listQueryMaker.make(count, filter))
+      result <- query.stripMargin
+        .query[SelectResult]
+        .map(toAudioPlaySeries)
+        .to[List]
+        .transact(transactor)
+        .handleErrorWith(toInternalError)
+    yield result
 
   override def search(
       query: NonEmptyString,
@@ -167,3 +172,7 @@ private final class AudioPlaySeriesRepositoryImpl[F[_]: MonadCancelThrow](
     id = uuid,
     name = name,
   )
+
+  private val listQueryMaker = ListQueryMaker[FilterField](selectBase) {
+    case FilterField.Id => NonEmptyString("id::text")
+  }

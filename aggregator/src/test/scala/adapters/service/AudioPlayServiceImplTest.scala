@@ -5,6 +5,7 @@ package adapters.service
 import adapters.service.mappers.{
   AudioPlayMapper,
   EpisodeTypeMapper,
+  ExternalResourceMapper,
   ReleaseDateMapper,
 }
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
@@ -33,10 +34,9 @@ import application.errors.AudioPlayServiceError.{
   NotSelfHosted,
 }
 import domain.errors.AudioPlayConstraint
-import domain.model.audioplay.AudioPlay
 import domain.model.audioplay.series.AudioPlaySeries
+import domain.model.audioplay.{AudioPlay, AudioPlayFilterField}
 import domain.model.shared.ImageUri
-import domain.repositories.AudioPlayRepository.AudioPlayCursor
 import domain.repositories.{AudioPlayRepository, CoverImageStorage}
 
 import cats.effect.IO
@@ -45,6 +45,8 @@ import cats.syntax.all.given
 import fs2.Stream
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.errors.ErrorStatus.PermissionDenied
+import org.aulune.commons.filter.Filter.Operator.GreaterThan
+import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.service.auth.User
 import org.aulune.commons.service.permission.{
@@ -123,8 +125,6 @@ final class AudioPlayServiceImplTest
   end stand
 
   private val audioPlay = AudioPlays.audioPlay1
-    .update(externalResources = Nil)
-    .getOrElse(throw new IllegalStateException())
 
   private val resource = AudioPlayResource(
     id = audioPlay.id,
@@ -143,7 +143,8 @@ final class AudioPlayServiceImplTest
     seriesNumber = audioPlay.seriesNumber,
     episodeType = audioPlay.episodeType.map(EpisodeTypeMapper.fromDomain),
     coverUri = audioPlay.coverUri,
-    externalResources = Nil,
+    externalResources = audioPlay.externalResources
+      .map(ExternalResourceMapper.fromDomain),
   )
   private val newUuid = Uuid[AudioPlay](uuid)
   private val newAudioPlay = audioPlay
@@ -186,8 +187,10 @@ final class AudioPlayServiceImplTest
           pageSize = 1.some,
           pageToken = None,
         )
-        val _ =
-          (mockRepo.list _).expects(None, 1).returning(List(audioPlay).pure)
+        val _ = (mockRepo.list _)
+          .expects(1, None)
+          .returning(List(audioPlay).pure)
+
         for result <- service.list(request)
         yield result match
           case Left(_)     => fail("Error was not expected")
@@ -200,13 +203,17 @@ final class AudioPlayServiceImplTest
           pageToken = None,
         )
 
-        val cursor = AudioPlayCursor(AudioPlays.audioPlay2.id).some
         val _ = (mockRepo.list _)
-          .expects(None, 1)
+          .expects(1, None)
           .returning(List(AudioPlays.audioPlay2).pure)
+
+        val filter = Condition(
+          AudioPlayFilterField.Id,
+          GreaterThan,
+          Literal(AudioPlays.audioPlay2.id.toString))
         val _ = (mockRepo.list _)
-          .expects(cursor, 1)
-          .returning(List(audioPlay).pure)
+          .expects(1, Some(filter))
+          .returning(List(AudioPlays.audioPlay1).pure)
 
         for
           first <- service.list(request)
@@ -265,7 +272,7 @@ final class AudioPlayServiceImplTest
       seriesNumber = audioPlay.seriesNumber,
       episodeType = audioPlay.episodeType.map(EpisodeTypeMapper.fromDomain),
       selfHostedLocation = audioPlay.selfHostedLocation,
-      externalResources = Nil,
+      externalResources = resource.externalResources,
     )
 
     "should " - {
@@ -285,8 +292,8 @@ final class AudioPlayServiceImplTest
           assertDomainError(find)(InvalidAudioPlay)
       }
 
-      "result in AudioPlaySeriesNotFound when creating audio play of non-existent series" in stand {
-        service =>
+      "result in AudioPlaySeriesNotFound when creating " +
+        "audio play of non-existent series" in stand { service =>
           val badRequest = request.copy(
             seriesId =
               UUID.fromString("a72e0458-b29f-4ac5-b19f-21197a8d18f8").some,
@@ -294,17 +301,17 @@ final class AudioPlayServiceImplTest
           val _ = mockHasPermission(Modify, true.asRight.pure)
           val find = service.create(user, badRequest)
           assertDomainError(find)(AudioPlaySeriesNotFound)
-      }
+        }
 
-      "result in DuplicateSeriesInfo when creating audio play with already taken series info" in stand {
-        service =>
+      "result in DuplicateSeriesInfo when creating " +
+        "audio play with already taken series info" in stand { service =>
           val _ = mockHasPermission(Modify, true.asRight.pure)
           val _ = mockPersist(
             IO.raiseError(RepositoryError.ConstraintViolation(
               AudioPlayConstraint.UniqueSeriesInfo)))
           val find = service.create(user, request)
           assertDomainError(find)(DuplicateSeriesInfo)
-      }
+        }
 
       "result in PermissionDenied for unauthorized users" in stand { service =>
         val _ = mockHasPermission(Modify, false.asRight.pure)

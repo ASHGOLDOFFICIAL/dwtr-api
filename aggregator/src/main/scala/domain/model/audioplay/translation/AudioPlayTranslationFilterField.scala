@@ -8,6 +8,7 @@ import org.aulune.commons.types.NonEmptyString
 
 /** Fields of [[AudioPlayTranslation]] that are allowed to be filtered on. */
 enum AudioPlayTranslationFilterField:
+  case Id
   case OriginalId
 
 
@@ -17,12 +18,15 @@ object AudioPlayTranslationFilterField:
     override def fromName(
         name: NonEmptyString,
     ): Option[AudioPlayTranslationFilterField] = name match
+      case s if s == "id"          => Some(Id)
       case s if s == "original_id" => Some(OriginalId)
       case _                       => None
 
     override def allows(
         a: AudioPlayTranslationFilterField,
     )(operation: Filter.Operator, value: Filter.Literal): Boolean = a match
+      case AudioPlayTranslationFilterField.Id =>
+        FilterField.stringAllows(operation, value)
       case AudioPlayTranslationFilterField.OriginalId =>
         FilterField.stringAllows(operation, value)
 

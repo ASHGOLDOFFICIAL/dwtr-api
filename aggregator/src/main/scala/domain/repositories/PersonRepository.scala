@@ -2,14 +2,13 @@ package org.aulune.aggregator
 package domain.repositories
 
 
-import domain.model.person.Person
-import domain.repositories.PersonRepository.Cursor
+import domain.model.person.{Person, PersonFilterField}
 
 import org.aulune.commons.pagination.cursor.{CursorDecoder, CursorEncoder}
 import org.aulune.commons.repositories.{
   BatchGet,
+  FilterList,
   GenericRepository,
-  PaginatedList,
   TextSearch,
 }
 import org.aulune.commons.types.Uuid
@@ -21,12 +20,5 @@ import org.aulune.commons.types.Uuid
 trait PersonRepository[F[_]]
     extends GenericRepository[F, Person, Uuid[Person]]
     with BatchGet[F, Person, Uuid[Person]]
-    with PaginatedList[F, Person, Cursor]
+    with FilterList[F, Person, PersonFilterField]
     with TextSearch[F, Person]
-
-
-object PersonRepository:
-  /** Cursor to resume pagination.
-   *  @param id identity of last entry.
-   */
-  final case class Cursor(id: Uuid[Person]) derives CursorEncoder, CursorDecoder
