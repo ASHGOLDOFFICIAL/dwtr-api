@@ -5,7 +5,6 @@ package domain.model.work
 import domain.errors.WorkValidationError
 import domain.errors.WorkValidationError.*
 import domain.model.person.Person
-import domain.model.work.Work.ValidationResult
 import domain.model.series.Series
 import domain.model.shared.{
   ExternalResource,
@@ -14,12 +13,14 @@ import domain.model.shared.{
   SelfHostedLocation,
   Synopsis,
 }
+import domain.model.work.Work.ValidationResult
 
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
 import org.aulune.commons.types.Uuid
 
 
-/** Piece of media representation.
+/** Audio play representation.
+ *
  *  @param id ID.
  *  @param title title.
  *  @param synopsis brief description.

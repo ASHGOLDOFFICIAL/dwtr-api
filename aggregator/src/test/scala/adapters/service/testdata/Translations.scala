@@ -1,6 +1,5 @@
 package org.aulune.aggregator
-package adapters.service
-
+package adapters.service.testdata
 
 import domain.model.shared.ExternalResourceType.{
   Download,

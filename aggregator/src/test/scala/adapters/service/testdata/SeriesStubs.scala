@@ -1,5 +1,5 @@
 package org.aulune.aggregator
-package adapters.service
+package adapters.service.testdata
 
 
 import adapters.service.errors.SeriesServiceErrorResponses
@@ -29,7 +29,7 @@ import java.util.UUID
 
 
 /** [[Series]] objects to use in tests. */
-private[aggregator] object WorkSeriesStubs:
+private[aggregator] object SeriesStubs:
   /** ''Mega Series'' series. */
   val series1: Series = Series
     .unsafe(
@@ -58,7 +58,7 @@ private[aggregator] object WorkSeriesStubs:
   /** Stub [[SeriesService]] implementation that supports only `get` and
    *  `batchGet` operation.
    *
-   *  Contains only series given in [[WorkSeriesStubs]] object.
+   *  Contains only series given in [[SeriesStubs]] object.
    *
    *  @tparam F effect type.
    */

@@ -2,6 +2,7 @@ package org.aulune.aggregator
 package adapters.service
 
 
+import adapters.service.testdata.SeriesStubs
 import adapters.service.mappers.SeriesMapper
 import application.AggregatorPermission.Modify
 import application.SeriesService
@@ -36,39 +37,36 @@ import org.aulune.commons.testing.ErrorAssertions.{
   assertErrorStatus,
   assertInternalError,
 }
-import org.aulune.commons.testing.instances.UUIDGenInstances.makeFixedUuidGen
-import org.aulune.commons.testing.syntax.getRight
+import org.aulune.commons.testing.instances.UUIDGenInstances
+import org.aulune.commons.testing.syntax.{getInvalid, getRight}
 import org.aulune.commons.typeclasses.SortableUUIDGen
 import org.aulune.commons.types.{NonEmptyString, Uuid}
 import org.scalamock.scalatest.AsyncMockFactory
 import org.scalatest.Assertion
+import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.noop.NoOpFactory
 import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.util.UUID
 
 
 /** Tests for [[SeriesServiceImpl]]. */
-final class SeriesServiceImplTest
-    extends AsyncFreeSpec
+final class SeriesServiceImplSpec
+    extends AsyncFlatSpec
     with AsyncIOSpec
     with Matchers
     with AsyncMockFactory:
 
-  private given LoggerFactory[IO] = Slf4jFactory.create
+  import Samples.*
+
+  private given LoggerFactory[IO] = NoOpFactory.impl[IO]
+  private given SortableUUIDGen[IO] = UUIDGenInstances.makeFixedUuidGen()
 
   private val mockRepo = mock[SeriesRepository[IO]]
   private val mockPermissions = mock[PermissionClientService[IO]]
-
-  private val uuid = UUID.fromString("00000000-0000-0000-0000-000000000001")
-  private given SortableUUIDGen[IO] = makeFixedUuidGen(uuid)
-
-  private val user = User(
-    id = UUID.fromString("f04eb510-229c-4cdd-bd7b-9691c3b28ae1"),
-    username = "username",
-  )
 
   private def stand(
       testCase: SeriesService[IO] => IO[Assertion],
@@ -88,41 +86,25 @@ final class SeriesServiceImplTest
       .flatMap(testCase)
   end stand
 
-  private val series = WorkSeriesStubs.series1
-  private val resource = SeriesResource(
-    id = series.id,
-    name = series.name,
-  )
-  private val newUuid = Uuid[Series](uuid)
-  private val newSeries = series
-    .update(id = newUuid)
-    .getOrElse(throw new IllegalStateException())
-  private val newResource = resource.copy(
-    id = newSeries.id,
-    name = newSeries.name,
-  )
+  behavior of "get"
 
-  "get method " - {
-    val request = GetSeriesRequest(series.id)
-
-    "should " - {
-      "find series if it's present in repository" in stand { service =>
-        val _ = mockGet(series.some.pure)
-        for result <- service.get(request)
-        yield result shouldBe resource.asRight
-      }
-
-      "result in SeriesNotFound if series doesn't exist" in stand { service =>
-        val _ = mockGet(None.pure)
-        val find = service.get(request)
-        assertDomainError(find)(SeriesNotFound)
-      }
-    }
+  it should "find series if it's present in repository" in stand { service =>
+    val _ = mockGet(series.some.pure)
+    for result <- service.get(getRequest)
+    yield result shouldBe resource.asRight
   }
 
+  it should "result in SeriesNotFound if series doesn't exist" in stand {
+    service =>
+      val _ = mockGet(None.pure)
+      val find = service.get(getRequest)
+      assertDomainError(find)(SeriesNotFound)
+  }
+
+  behavior of "batchGet"
+  
   "batchGet method " - {
-    val elements =
-      NonEmptyList.of(WorkSeriesStubs.series1, WorkSeriesStubs.series2)
+    val elements = NonEmptyList.of(SeriesStubs.series1, SeriesStubs.series2)
     val ids = elements.map(_.id)
     val request = BatchGetSeriesRequest(names = ids.toList)
 
@@ -133,16 +115,14 @@ final class SeriesServiceImplTest
           .returning(elements.toList.pure)
 
         for result <- service.batchGet(request)
-        yield result match
-          case Left(_)         => fail("Error was not expected.")
-          case Right(response) => response.works.map(_.id) shouldBe ids.toList
+        yield result.getRight.works.map(_.id) shouldBe ids.toList
       }
 
       "return SeriesNotFound if at least one series is not found" in stand {
         service =>
           val _ = (mockRepo.batchGet _)
             .expects(ids)
-            .returning(List(WorkSeriesStubs.series1).pure)
+            .returning(List(SeriesStubs.series1).pure)
 
           val batchGet = service.batchGet(request)
           assertDomainError(batchGet)(SeriesNotFound)
@@ -159,9 +139,7 @@ final class SeriesServiceImplTest
         )
         val _ = (mockRepo.list _).expects(1, None).returning(List(series).pure)
         for result <- service.list(request)
-        yield result match
-          case Left(_)     => fail("Error was not expected")
-          case Right(list) => list.series shouldBe List(resource)
+        yield result.getRight.series shouldBe List(resource)
       }
 
       "return next page when asked" in stand { service =>
@@ -172,17 +150,17 @@ final class SeriesServiceImplTest
 
         val _ = (mockRepo.list _)
           .expects(1, None)
-          .returning(List(WorkSeriesStubs.series1).pure)
+          .returning(List(SeriesStubs.series1).pure)
 
         val filter = Condition(
           SeriesField.Id,
           GreaterThan,
-          Literal(WorkSeriesStubs.series1.id.toString))
+          Literal(SeriesStubs.series1.id.toString))
         val _ = (mockRepo.list _)
           .expects(1, Some(filter))
-          .returning(List(WorkSeriesStubs.series1).pure)
+          .returning(List(SeriesStubs.series1).pure)
 
-        val response = SeriesMapper.toResponse(WorkSeriesStubs.series1)
+        val response = SeriesMapper.toResponse(SeriesStubs.series1)
 
         for
           first <- service.list(request)
@@ -203,18 +181,16 @@ final class SeriesServiceImplTest
     "should " - {
       "return list of elements" in stand { service =>
         val elements = List(
-          WorkSeriesStubs.series3,
-          WorkSeriesStubs.series2,
+          SeriesStubs.series3,
+          SeriesStubs.series2,
         )
         val _ = (mockRepo.search _)
           .expects(query, 2)
           .returning(elements.pure)
 
+        val expected = elements.map(SeriesMapper.toResponse)
         for result <- service.search(request)
-        yield result match
-          case Left(_)     => fail("Error was not expected")
-          case Right(list) =>
-            list.series shouldBe elements.map(SeriesMapper.toResponse)
+        yield result.getRight.series shouldBe expected
       }
     }
   }
@@ -298,4 +274,28 @@ final class SeriesServiceImplTest
     .expects(user, permission)
     .returning(returning)
 
-end SeriesServiceImplTest
+  object Samples:
+    val user: User = User(
+      id = UUID.fromString("f04eb510-229c-4cdd-bd7b-9691c3b28ae1"),
+      username = "username",
+    )
+
+    val seriesList: NonEmptyList[Series] =
+      NonEmptyList.of(SeriesStubs.series1, SeriesStubs.series2)
+    val series: Series = seriesList.head
+
+    val resource: SeriesResource = SeriesResource(
+      id = series.id,
+      name = series.name,
+    )
+    val newUuid: Uuid[Series] = Uuid[Series](UUIDGenInstances.fixedUuid)
+    val newSeries: Series = series
+      .update(id = newUuid)
+      .getOrElse(throw new IllegalStateException())
+    val newResource: SeriesResource = resource.copy(
+      id = newSeries.id,
+      name = newSeries.name,
+    )
+    val getRequest: GetSeriesRequest = GetSeriesRequest(series.id)
+
+end SeriesServiceImplSpec

@@ -1,6 +1,5 @@
 package org.aulune.aggregator
-package adapters.service
-
+package adapters.service.testdata
 
 import adapters.service.errors.PersonServiceErrorResponses
 import adapters.service.mappers.PersonMapper

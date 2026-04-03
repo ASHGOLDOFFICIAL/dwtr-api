@@ -2,37 +2,13 @@ package org.aulune.aggregator
 package adapters.service
 
 
-import adapters.service.mappers.{
-  EpisodeTypeMapper,
-  ExternalResourceMapper,
-  ReleaseDateMapper,
-  WorkMapper,
-}
+import adapters.service.mappers.{EpisodeTypeMapper, ExternalResourceMapper, ReleaseDateMapper, WorkMapper}
 import application.AggregatorPermission.{Modify, SeeSelfHostedLocation}
 import application.WorkService
 import application.dto.series.SeriesResource
 import application.dto.work.WorkResource.CastMemberResource
-import application.dto.work.{
-  CastMemberDTO,
-  CreateWorkRequest,
-  DeleteWorkRequest,
-  GetWorkLocationRequest,
-  GetWorkRequest,
-  ListWorksRequest,
-  ListWorksResponse,
-  SearchWorksRequest,
-  UploadWorkCoverRequest,
-  WorkResource,
-}
-import application.errors.WorkServiceError.{
-  CoverTooBig,
-  DuplicateSeriesInfo,
-  InvalidCoverImage,
-  InvalidWork,
-  NotSelfHosted,
-  SeriesNotFound,
-  WorkNotFound,
-}
+import application.dto.work.{CastMemberDTO, CreateWorkRequest, DeleteWorkRequest, GetWorkLocationRequest, GetWorkRequest, ListWorksRequest, ListWorksResponse, SearchWorksRequest, UploadWorkCoverRequest, WorkResource}
+import application.errors.WorkServiceError.{CoverTooBig, DuplicateSeriesInfo, InvalidCoverImage, InvalidWork, NotSelfHosted, SeriesNotFound, WorkNotFound}
 import domain.errors.WorkConstraint
 import domain.model.series.Series
 import domain.model.shared.ImageUri
@@ -43,30 +19,20 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
 import fs2.Stream
+import org.aulune.aggregator.adapters.service.testdata.{Persons, SeriesStubs, Works}
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.errors.ErrorStatus.PermissionDenied
 import org.aulune.commons.filter.Filter.Operator.GreaterThan
 import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.repositories.RepositoryError
 import org.aulune.commons.service.auth.User
-import org.aulune.commons.service.permission.{
-  Permission,
-  PermissionClientService,
-}
-import org.aulune.commons.testing.ErrorAssertions.{
-  assertDomainError,
-  assertErrorStatus,
-  assertInternalError,
-}
+import org.aulune.commons.service.permission.{Permission, PermissionClientService}
+import org.aulune.commons.testing.ErrorAssertions.{assertDomainError, assertErrorStatus, assertInternalError}
 import org.aulune.commons.testing.instances.UUIDGenInstances.makeFixedUuidGen
 import org.aulune.commons.testing.syntax.*
 import org.aulune.commons.typeclasses.SortableUUIDGen
 import org.aulune.commons.types.{NonEmptyString, Uuid}
-import org.aulune.commons.utils.imaging.{
-  ImageConversionError,
-  ImageConverter,
-  ImageFormat,
-}
+import org.aulune.commons.utils.imaging.{ImageConversionError, ImageConverter, ImageFormat}
 import org.scalamock.scalatest.AsyncMockFactory
 import org.scalatest.Assertion
 import org.scalatest.freespec.AsyncFreeSpec
@@ -89,7 +55,7 @@ final class WorkServiceImplTest
 
   private val mockRepo = mock[WorkRepository[IO]]
   private val mockCoverStorage = mock[CoverImageStorage[IO]]
-  private val mockSeries = WorkSeriesStubs.service[IO]
+  private val mockSeries = SeriesStubs.service[IO]
   private val mockPerson = Persons.service[IO]
   private val mockPermissions = mock[PermissionClientService[IO]]
   private val mockConverter = mock[ImageConverter[IO]]
@@ -138,7 +104,7 @@ final class WorkServiceImplTest
         roles = m.roles,
         main = m.main,
       )),
-    series = work.seriesId.map(WorkSeriesStubs.resourceById),
+    series = work.seriesId.map(SeriesStubs.resourceById),
     seriesSeason = work.seriesSeason,
     seriesNumber = work.seriesNumber,
     episodeType = work.episodeType.map(EpisodeTypeMapper.fromDomain),
@@ -244,7 +210,7 @@ final class WorkServiceImplTest
           case Right(list) => list.works shouldBe elements.map { ap =>
               WorkMapper.makeResource(
                 ap,
-                ap.seriesId.map(WorkSeriesStubs.resourceById),
+                ap.seriesId.map(SeriesStubs.resourceById),
                 Persons.resourceById,
               )
             }

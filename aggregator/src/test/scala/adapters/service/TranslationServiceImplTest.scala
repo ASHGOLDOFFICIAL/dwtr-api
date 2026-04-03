@@ -2,47 +2,25 @@ package org.aulune.aggregator
 package adapters.service
 
 
-import adapters.service.mappers.{
-  ExternalResourceMapper,
-  LanguageMapper,
-  TranslationMapper,
-  TranslationTypeMapper,
-}
+import adapters.service.mappers.{ExternalResourceMapper, LanguageMapper, TranslationMapper, TranslationTypeMapper}
 import application.AggregatorPermission.Modify
 import application.TranslationService
-import application.dto.translation.{
-  CreateTranslationRequest,
-  DeleteTranslationRequest,
-  GetTranslationRequest,
-  ListTranslationsRequest,
-  ListTranslationsResponse,
-  TranslationResource,
-}
-import application.errors.TranslationServiceError.{
-  InvalidTranslation,
-  OriginalNotFound,
-  TranslationNotFound,
-}
+import application.dto.translation.{CreateTranslationRequest, DeleteTranslationRequest, GetTranslationRequest, ListTranslationsRequest, ListTranslationsResponse, TranslationResource}
+import application.errors.TranslationServiceError.{InvalidTranslation, OriginalNotFound, TranslationNotFound}
 import domain.model.translation.{TranslatedTitle, Translation, TranslationField}
 import domain.repositories.TranslationRepository
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.given
+import org.aulune.aggregator.adapters.service.testdata.{Translations, Works}
 import org.aulune.commons.errors.ErrorResponse
 import org.aulune.commons.errors.ErrorStatus.PermissionDenied
 import org.aulune.commons.filter.Filter.Operator.GreaterThan
 import org.aulune.commons.filter.Filter.{Condition, Literal}
 import org.aulune.commons.service.auth.User
-import org.aulune.commons.service.permission.{
-  Permission,
-  PermissionClientService,
-}
-import org.aulune.commons.testing.ErrorAssertions.{
-  assertDomainError,
-  assertErrorStatus,
-  assertInternalError,
-}
+import org.aulune.commons.service.permission.{Permission, PermissionClientService}
+import org.aulune.commons.testing.ErrorAssertions.{assertDomainError, assertErrorStatus, assertInternalError}
 import org.aulune.commons.testing.instances.UUIDGenInstances.makeFixedUuidGen
 import org.aulune.commons.testing.syntax.*
 import org.aulune.commons.typeclasses.SortableUUIDGen

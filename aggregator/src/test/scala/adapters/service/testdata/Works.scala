@@ -1,6 +1,5 @@
 package org.aulune.aggregator
-package adapters.service
-
+package adapters.service.testdata
 
 import adapters.service.errors.WorkServiceErrorResponses
 import adapters.service.mappers.WorkMapper
@@ -86,7 +85,7 @@ private[aggregator] object Works:
       ),
     ),
     releaseDate = makeReleaseDate(2000, 10, 10, Full),
-    seriesId = WorkSeriesStubs.series1.id.some,
+    seriesId = SeriesStubs.series1.id.some,
     seriesSeason = SeasonNumber.unsafe(1).some,
     seriesNumber = SeriesNumber.unsafe(1).some,
     episodeType = EpisodeType.Regular.some,
@@ -111,7 +110,7 @@ private[aggregator] object Works:
     releaseDate = makeReleaseDate(1999, 10, 31, Day),
     writers = Nil,
     cast = Nil,
-    seriesId = WorkSeriesStubs.series3.id.some,
+    seriesId = SeriesStubs.series3.id.some,
     seriesSeason = None,
     seriesNumber = SeriesNumber.unsafe(2).some,
     episodeType = EpisodeType.Special.some,
@@ -168,7 +167,7 @@ private[aggregator] object Works:
       .map { audioPlay =>
         WorkMapper.makeResource(
           audioPlay,
-          audioPlay.seriesId.map(WorkSeriesStubs.resourceById),
+          audioPlay.seriesId.map(SeriesStubs.resourceById),
           Persons.resourceById,
         )
       }
@@ -190,7 +189,7 @@ private[aggregator] object Works:
         elements.map { audioPlay =>
           WorkMapper.makeResource(
             audioPlay,
-            audioPlay.seriesId.map(WorkSeriesStubs.resourceById),
+            audioPlay.seriesId.map(SeriesStubs.resourceById),
             Persons.resourceById,
           )
         },

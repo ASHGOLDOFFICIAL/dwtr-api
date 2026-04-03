@@ -6,13 +6,12 @@ import cats.effect.IO
 import com.dimafeng.testcontainers.MinIOContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForEach
 import io.minio.MinioClient
-import org.scalatest.Assertion
-import org.scalatest.freespec.AsyncFreeSpec
+import org.scalatest.{Assertion, Suite}
 import org.testcontainers.utility.DockerImageName
 
 
 /** Test container with MinIO. */
-trait MinIOTestContainer extends AsyncFreeSpec with TestContainerForEach:
+trait MinIOTestContainer extends Suite with TestContainerForEach:
   private val minioPort = 9000
   private val accessKey: String = "minioadmin"
   private val secretKey: String = "minioadmin"
@@ -23,8 +22,8 @@ trait MinIOTestContainer extends AsyncFreeSpec with TestContainerForEach:
     password = secretKey,
   )
 
-  private type Init[A] = (MinioClient, String) => IO[A]
-  private type TestCase[A] = A => IO[Assertion]
+  private final type Init[A] = (MinioClient, String) => IO[A]
+  private final type TestCase[A] = A => IO[Assertion]
 
   /** @param init function that returns a service given [[MinIOClient]] and its
    *    endpoint.
