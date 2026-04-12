@@ -9,12 +9,3 @@ enum AuthenticateUserRequest:
    *  @param password user's password.
    */
   case BasicAuthentication(username: String, password: String)
-
-  /** Authentication via third party using OAuth2 protocol.
-   *  @param provider third party.
-   *  @param authorizationCode authorization code from third party.
-   */
-  case OAuth2Authentication(
-      provider: OAuth2ProviderDTO,
-      authorizationCode: String,
-  )

@@ -2,11 +2,7 @@ package org.aulune.auth
 package api.http.tapir.examples
 
 
-import application.dto.AuthenticateUserRequest.{
-  BasicAuthentication,
-  OAuth2Authentication,
-}
-import application.dto.OAuth2ProviderDTO.Google
+import application.dto.AuthenticateUserRequest.BasicAuthentication
 import application.dto.{AuthenticateUserRequest, AuthenticateUserResponse}
 
 import sttp.tapir.EndpointIO
@@ -20,22 +16,11 @@ object AuthenticationExamples:
       password = "password",
     )
 
-  private val requestOauthExample: AuthenticateUserRequest =
-    OAuth2Authentication(
-      provider = Google,
-      authorizationCode = "4/P7q7W91a-oMsCeLvIaQm6bTrgtp7",
-    )
-
   val requestExamples: List[Example[AuthenticateUserRequest]] = List(
     Example(
       value = requestBasicExample,
       name = Some("Basic authentication."),
       summary = Some("Basic authentication with username and password."),
-    ),
-    Example(
-      value = requestOauthExample,
-      name = Some("OAuth2 authentication."),
-      summary = Some("OAuth2 authentication via Google."),
     ),
   )
 

@@ -2,7 +2,7 @@ package org.aulune.auth
 package adapters.service
 
 
-import domain.model.{ExternalId, User, Username}
+import domain.model.{User, Username}
 import domain.repositories.UserRepository
 import domain.services.{BasicAuthenticationHandler, PasswordHasher}
 
@@ -38,7 +38,6 @@ final class BasicAuthenticationHandlerImplTest
     id = Uuid.unsafe("a18432b9-9552-4b95-8e8a-e36dba18c1ac"),
     username = Username.unsafe("username"),
     hashedPassword = Option("hash"),
-    googleId = Option(ExternalId.unsafe("google_id")),
   )
   private val password = "password"
 

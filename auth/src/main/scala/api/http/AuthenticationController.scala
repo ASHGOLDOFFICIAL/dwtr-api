@@ -3,20 +3,13 @@ package api.http
 
 
 import api.http.circe.AuthenticationCodecs.given
-import api.http.circe.UserCodecs.given
 import api.http.tapir.examples.AuthenticationExamples.{
   requestExamples,
   responseExample,
 }
-import api.http.tapir.examples.UserExamples.createRequestExample
 import api.http.tapir.schemas.AuthenticationSchemas.given
-import api.http.tapir.schemas.UserSchemas.given
 import application.AuthenticationService
-import application.dto.{
-  AuthenticateUserRequest,
-  AuthenticateUserResponse,
-  CreateUserRequest,
-}
+import application.dto.{AuthenticateUserRequest, AuthenticateUserResponse}
 
 import cats.Functor
 import cats.syntax.all.given
@@ -57,25 +50,5 @@ final class AuthenticationController[F[_]: Functor](
       yield result.leftMap(ErrorStatusCodeMapper.toApiResponse)
     }
 
-  private val postEndpoint = endpoint.post
-    .in(collection)
-    .in(jsonBody[CreateUserRequest]
-      .description("Registration details.")
-      .example(createRequestExample))
-    .out(statusCode(StatusCode.Created).and(jsonBody[AuthenticateUserResponse]
-      .description("Tokens to use in calls to API.")
-      .example(responseExample)))
-    .errorOut(statusCode.and(jsonBody[ErrorResponse]))
-    .name("CreateUser")
-    .summary("Register new user.")
-    .tag(tag)
-    .serverLogic { request =>
-      for result <- service.register(request)
-      yield result.leftMap(ErrorStatusCodeMapper.toApiResponse)
-    }
-
   /** Returns Tapir endpoints for authentication. */
-  def endpoints: List[ServerEndpoint[Any, F]] = List(
-    loginEndpoint,
-    postEndpoint,
-  )
+  def endpoints: List[ServerEndpoint[Any, F]] = List(loginEndpoint)

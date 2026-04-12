@@ -3,7 +3,7 @@ package adapters.jdbc.postgres
 
 
 import domain.errors.UserConstraint
-import domain.model.{ExternalId, User, Username}
+import domain.model.{User, Username}
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -31,7 +31,6 @@ final class UserRepositoryImplTest
     id = Uuid.unsafe[User]("7690e9ab-700d-46ef-9e46-2bcce2d56ae3"),
     username = Username.unsafe("username"),
     hashedPassword = Option("test_hash"),
-    googleId = Option(ExternalId.unsafe("google_id")),
   )
   private val updatedTestUser = testUser
     .update(
@@ -94,21 +93,6 @@ final class UserRepositoryImplTest
         yield result shouldBe Left(
           ConstraintViolation(UserConstraint.UniqueUsername))
       }
-
-      "throw error when adding user with taken Google ID" in stand { repo =>
-        val another = testUser
-          .update(
-            id = Uuid.unsafe("eab28102-2ecd-4ff2-8572-58143fbe920d"),
-            username = Username.unsafe("another_username"),
-            googleId = testUser.googleId,
-          )
-          .getOrElse(throw new IllegalStateException())
-        for
-          _ <- repo.persist(testUser)
-          result <- repo.persist(another).attempt
-        yield result shouldBe Left(
-          ConstraintViolation(UserConstraint.UniqueGoogleId))
-      }
     }
   }
 
@@ -117,7 +101,6 @@ final class UserRepositoryImplTest
       id = Uuid.unsafe("98d69db3-3975-4431-8979-4b39dc9c01f7"),
       username = Username.unsafe("another_username"),
       hashedPassword = None,
-      googleId = None,
     )
 
     "should " - {
@@ -144,19 +127,6 @@ final class UserRepositoryImplTest
           result <- repo.update(updated).attempt
         yield result shouldBe Left(
           ConstraintViolation(UserConstraint.UniqueUsername))
-      }
-
-      "throw error when updating user with taken Google ID" in stand { repo =>
-        val updated = another
-          .update(googleId = testUser.googleId)
-          .getOrElse(throw new IllegalStateException())
-
-        for
-          _ <- repo.persist(testUser)
-          _ <- repo.persist(another)
-          result <- repo.update(updated).attempt
-        yield result shouldBe Left(
-          ConstraintViolation(UserConstraint.UniqueGoogleId))
       }
 
       "be idempotent" in stand { repo =>
@@ -199,22 +169,6 @@ final class UserRepositoryImplTest
         for
           _ <- repo.persist(testUser)
           user <- repo.getByUsername(testUser.username)
-        yield user shouldBe Some(testUser)
-      }
-    }
-  }
-
-  "getByGoogleId method " - {
-    "should " - {
-      "return `None` for non-existent user" in stand { repo =>
-        for user <- repo.getByGoogleId(testUser.googleId.get)
-        yield user shouldBe None
-      }
-
-      "retrieve existing users" in stand { repo =>
-        for
-          _ <- repo.persist(testUser)
-          user <- repo.getByGoogleId(testUser.googleId.get)
         yield user shouldBe Some(testUser)
       }
     }

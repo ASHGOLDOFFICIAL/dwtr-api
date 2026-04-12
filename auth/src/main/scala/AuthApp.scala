@@ -2,13 +2,11 @@ package org.aulune.auth
 
 
 import adapters.jdbc.postgres.UserRepositoryImpl
-import adapters.service.oauth2.GoogleOAuth2CodeExchanger
 import adapters.service.{
   Argon2iPasswordHasher,
   AuthenticationServiceImpl,
   BasicAuthenticationHandlerImpl,
   JwtTokenService,
-  OAuth2AuthenticationHandlerImpl,
 }
 import api.http.AuthenticationController
 
@@ -46,12 +44,6 @@ object AuthApp:
   ): F[AuthApp[F]] = EmberClientBuilder.default[F].build.use { httpClient =>
     for
       userRepo <- UserRepositoryImpl.build[F](transactor)
-
-      googleCode <- GoogleOAuth2CodeExchanger
-        .build(config.oauth.google, httpClient)
-      oauthHandler =
-        new OAuth2AuthenticationHandlerImpl[F](googleCode, userRepo)
-
       hasher <- Argon2iPasswordHasher.build[F]
       basicHandler = new BasicAuthenticationHandlerImpl[F](userRepo, hasher)
 
@@ -60,8 +52,7 @@ object AuthApp:
         userRepo,
         tokenServ,
         tokenServ,
-        basicHandler,
-        oauthHandler)
+        basicHandler)
       authEndpoints = new AuthenticationController[F](service).endpoints
     yield new AuthApp[F]:
       override val clientAuthentication: AuthenticationClientService[F] =
