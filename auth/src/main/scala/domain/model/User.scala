@@ -21,19 +21,16 @@ final case class User private (
     id: Uuid[User],
     username: Username,
     hashedPassword: Option[String],
-    googleId: Option[ExternalId],
 ):
   /** Copies with validation. */
   def update(
       id: Uuid[User] = id,
       username: Username = username,
       hashedPassword: Option[String] = hashedPassword,
-      googleId: Option[ExternalId] = googleId,
   ): ValidationResult[User] = User(
     id = id,
     username = username,
     hashedPassword = hashedPassword,
-    googleId = googleId,
   )
 
 
@@ -53,7 +50,6 @@ object User:
     id = id,
     username = username,
     hashedPassword = None,
-    googleId = None,
   )
 
   /** Returns a user if all given arguments are valid.
@@ -65,13 +61,8 @@ object User:
       id: Uuid[User],
       username: Username,
       hashedPassword: Option[String],
-      googleId: Option[ExternalId],
   ): ValidationResult[User] = validateState(
-    new User(
-      id = id,
-      username = username,
-      hashedPassword = hashedPassword,
-      googleId = googleId))
+    new User(id = id, username = username, hashedPassword = hashedPassword))
 
   /** Unsafe constructor for always valid boundary.
    *  @throws UserValidationError if arguments are invalid.
@@ -80,14 +71,10 @@ object User:
       id: Uuid[User],
       username: Username,
       hashedPassword: Option[String],
-      googleId: Option[ExternalId],
-  ): User = User(
-    id = id,
-    username = username,
-    hashedPassword = hashedPassword,
-    googleId = googleId) match
-    case Validated.Valid(a)   => a
-    case Validated.Invalid(e) => throw e.head
+  ): User =
+    User(id = id, username = username, hashedPassword = hashedPassword) match
+      case Validated.Valid(a)   => a
+      case Validated.Invalid(e) => throw e.head
 
   /** Validates object state.
    *  @param user user to validate.

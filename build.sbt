@@ -141,7 +141,7 @@ val scalamockVersion = "7.4.1"
 val scalatestVersion = "3.2.19"
 val sqliteVersion = "3.50.3.0"
 val tapirVersion = "1.11.40"
-val testcontainersVersion = "0.43.0"
+val testcontainersVersion = "0.44.1"
 
 resolvers += Resolver.sonatypeCentralSnapshots
 
